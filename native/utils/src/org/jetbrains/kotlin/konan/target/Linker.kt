@@ -522,6 +522,7 @@ class MingwLinker(targetProperties: MingwConfigurables)
         }
         val targetSuffix = when (val definedTarget = target) {
             KonanTarget.MINGW_X64 -> "x86_64"
+            KonanTarget.MINGW_ARM64 -> "aarch64"
             else -> error("$definedTarget is not supported.")
         }
         val dir = Path("$absoluteLlvmHome/lib/clang/").listDirectoryEntries().firstOrNull()?.absolutePathString()

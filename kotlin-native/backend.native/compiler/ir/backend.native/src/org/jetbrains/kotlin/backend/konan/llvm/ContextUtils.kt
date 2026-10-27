@@ -596,7 +596,7 @@ internal class CodegenLlvmHelpers(private val generationState: NativeGenerationS
     }
 
     private val personalityFunctionName = when (target) {
-        KonanTarget.MINGW_X64 -> "__gxx_personality_seh0"
+        KonanTarget.MINGW_X64, KonanTarget.MINGW_ARM64 -> "__gxx_personality_seh0"
         else -> "__gxx_personality_v0"
     }
 

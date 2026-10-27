@@ -105,6 +105,6 @@ abstract class KonanPropertiesLoader(
 
 private fun defaultArchiveTypeByHost(host: KonanTarget): ArchiveType = when (host) {
     KonanTarget.LINUX_X64, KonanTarget.MACOS_X64, KonanTarget.MACOS_ARM64 -> ArchiveType.TAR_GZ
-    KonanTarget.MINGW_X64 -> ArchiveType.ZIP
+    KonanTarget.MINGW_X64, KonanTarget.MINGW_ARM64 -> ArchiveType.ZIP
     else -> error("$host can't be a host platform!")
 }

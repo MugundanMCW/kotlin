@@ -53,6 +53,7 @@ open class HostManager() {
         LINUX_ARM32_HFP,
         LINUX_ARM64,
         MINGW_X64,
+        MINGW_ARM64,
         ANDROID_X86,
         ANDROID_X64,
         ANDROID_ARM32,
@@ -76,6 +77,11 @@ open class HostManager() {
     val enabledByHost: Map<KonanTarget, Set<KonanTarget>> = mapOf(
         LINUX_X64 to commonTargets,
         MINGW_X64 to commonTargets,
+        // MINGW_ARM64 as a host has no published Kotlin/Native bootstrap compiler or JetBrains-built LLVM
+        // distribution yet (see KT-82419 and docs/building). It is listed here so that MINGW_ARM64 can at
+        // least be used as a *cross-compilation target* from already-supported hosts; running the compiler
+        // natively on a Windows ARM64 host is not yet possible.
+        MINGW_ARM64 to commonTargets,
         MACOS_ARM64 to commonTargets + appleTargets
     )
 
@@ -125,7 +131,7 @@ open class HostManager() {
             get() = when (host) {
                 MACOS_ARM64 -> "darwin"
                 LINUX_X64 -> "linux"
-                MINGW_X64 -> "win32"
+                MINGW_X64, MINGW_ARM64 -> "win32"
                 else -> throw TargetSupportException("Unknown host: $host.")
             }
 
@@ -149,7 +155,14 @@ open class HostManager() {
         private val hostMapping: Map<Pair<String, String>, KonanTarget> = mapOf(
             Pair("osx", "aarch64") to MACOS_ARM64,
             Pair("linux", "x86_64") to LINUX_X64,
-            Pair("windows", "x86_64") to MINGW_X64
+            Pair("windows", "x86_64") to MINGW_X64,
+            // Windows on ARM64 as a *host*: recognized so that HostManager/PlatformManager no longer treat it as
+            // an unsupported OS (KT-82419). Using it as an actual compilation host still requires a
+            // windows-aarch64 build of JetBrains' LLVM distribution and a published Kotlin/Native bootstrap
+            // compiler for that classifier, neither of which exist yet - see kotlin-native/README.md and
+            // docs/building. Until then, this target should primarily be used as a cross-compilation target
+            // from an already-supported host (e.g. linux_x64, macos_arm64).
+            Pair("windows", "aarch64") to MINGW_ARM64
         )
 
         @JvmStatic

@@ -10,6 +10,23 @@
 * [git](https://git-scm.com/)
 * [CMake](https://cmake.org/)
 
+### Windows
+
+Run this script from a Visual Studio Developer Command Prompt (e.g. "Developer Command Prompt
+for VS", "x64 Native Tools Command Prompt for VS", or "ARM64 Native Tools Command Prompt for
+VS") so that `cl.exe`/`link.exe` and the `INCLUDE`/`LIB` environment variables are already set
+up. The script itself does not invoke `vsdevcmd.bat` or do any other environment setup on
+Windows - it just runs `git`/`cmake`/`ninja` directly, the same way it does on Linux and macOS.
+
+### Windows on ARM64
+
+Running natively on Windows ARM64 (e.g. from an "ARM64 Native Tools Command Prompt for VS") is
+**experimental and not verified by JetBrains**: no `windows-aarch64` LLVM distribution has ever
+been produced or published, there is no existing bootstrap LLVM to download for that host (see
+`--stage0` below), and the rest of the Kotlin/Native build (`konan.properties`,
+`gradle.properties`) has no entries for a `mingw_arm64` host yet. Treat a Windows ARM64 run of
+this script as a first attempt, not a supported path.
+
 ### Usage
 
 Just run

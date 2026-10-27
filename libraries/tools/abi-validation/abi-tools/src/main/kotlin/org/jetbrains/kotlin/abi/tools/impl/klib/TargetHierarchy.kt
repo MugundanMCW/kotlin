@@ -34,7 +34,8 @@ internal object TargetHierarchy {
             Node(
                 "mingw",
                 Node("mingwX64"),
-                Node("mingwX86")
+                Node("mingwX86"),
+                Node("mingwArm64")
             ),
             Node(
                 "linux",

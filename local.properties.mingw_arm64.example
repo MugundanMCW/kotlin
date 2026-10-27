@@ -1,0 +1,11 @@
+# Template for building Kotlin/Native on a Windows ARM64 (mingw_arm64) host.
+# Copy to `local.properties` in the repo root (that file is gitignored) and adjust the paths.
+
+kotlin.native.enabled=true
+
+# Absolute path to the LLVM distribution built with kotlin-native/tools/llvm_builder/package.py
+# (use forward slashes).
+kotlin.native.llvm=C:/llvm-arm64-dev
+
+# LLVM major version: the <N> in <llvm dist>/lib/clang/<N>/include
+kotlin.native.llvm.next.mingw_arm64.version=21

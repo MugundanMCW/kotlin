@@ -123,6 +123,7 @@ internal val konanTargetNameMapping = mapOf(
     "tvos_simulator_arm64" to "tvosSimulatorArm64",
     "linux_x64" to "linuxX64",
     "mingw_x64" to "mingwX64",
+    "mingw_arm64" to "mingwArm64",
     "macos_x64" to "macosX64",
     "macos_arm64" to "macosArm64",
     "linux_arm64" to "linuxArm64",

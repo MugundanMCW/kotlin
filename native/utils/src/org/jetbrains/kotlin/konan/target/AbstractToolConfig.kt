@@ -20,7 +20,7 @@ abstract class AbstractToolConfig(konanHome: String, userProvidedTargetName: Str
     val sysRoot = platform.absoluteTargetSysRoot
 
     val libclang = when (host) {
-        KonanTarget.MINGW_X64 -> "$llvmHome/bin/libclang.dll"
+        KonanTarget.MINGW_X64, KonanTarget.MINGW_ARM64 -> "$llvmHome/bin/libclang.dll"
         else -> "$llvmHome/lib/${System.mapLibraryName("clang")}"
     }
 
