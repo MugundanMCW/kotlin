@@ -53,6 +53,7 @@ static short posix_htons(short x) {
 #define LPVOID      void*
 #define LPSTR       CHAR*
 #define LPWSTR      WCHAR*
+#define PWSTR       WCHAR*
 #define WINBOOL     int
 #define WPARAM      UINT_PTR
 #define HANDLE      LPVOID
@@ -62,6 +63,10 @@ static short posix_htons(short x) {
 #define WINAPI      __stdcall
 #define CALLBACK    __stdcall
 #define PASCAL      __pascal
+
+// Newer MinGW-w64 headers (KT-82419) also expect these fixed-width types from the windows.h this hack avoids.
+typedef unsigned char UINT8;
+typedef unsigned short UINT16;
 
 #define _INC_WINDOWS
 #define RPC_NO_WINDOWS_H

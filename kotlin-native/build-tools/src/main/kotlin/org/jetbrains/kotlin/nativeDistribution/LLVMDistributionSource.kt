@@ -16,7 +16,7 @@ import kotlin.io.path.isDirectory
 private const val ROOT_PROPERTY_NAME = "kotlin.native.llvm"
 // build-tools compiles against the *bootstrap* kotlin-native-utils, which may not know about newer targets
 // (e.g. mingw_arm64, KT-82419) yet. Look hosts up by name so this compiles either way; unknown names are skipped.
-private val supportedHosts = listOf("linux_x64", "macos_arm64", "macos_x64", "mingw_x64", "mingw_arm64")
+private val supportedHosts = listOf("linux_x64", "macos_arm64", "macos_x64", "mingw_x64")
     .mapNotNull { KonanTarget.predefinedTargets[it] }
 
 /**

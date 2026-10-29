@@ -29,6 +29,8 @@ native {
             "-I${nativeDependencies.libffiPath}/include",
             *hostPlatform.clangForJni.hostCompilerArgsForJni,
             *reproducibilityCompilerFlags,
+            // The MSYS2 CLANGARM64 libffi is a static archive; without this ffi.h declares its symbols dllimport (KT-82419).
+            *(if (HostManager.host.name == "mingw_arm64") arrayOf("-DFFI_STATIC_BUILD") else emptyArray()),
     )
     suffixes {
         (".c" to ".$obj") {
@@ -50,6 +52,11 @@ native {
               "-L${project(":kotlin-native:libclangext").isolated.projectDirectory.dir("build").asFile}",
               "${nativeDependencies.libffiPath}/lib/libffi.$lib",
               "-lclangext")
+
+        if (HostManager.host.name == "mingw_arm64") {
+            // The MSYS2 libffi archive needs compiler-rt helpers (KT-82419); stack-protector symbols come from ssp_compat.c.
+            flags("${nativeDependencies.libffiPath}/lib/libclang_rt.builtins-aarch64.a")
+        }
 
         if (HostManager.hostIsMac) {
             // Set install_name to a non-absolute path.

@@ -88,7 +88,8 @@ val currentOsType = run {
     val osArch = when (providers.systemProperty("sun.arch.data.model").get()) {
         "32" -> OsArch.X86_32
         "64" -> when (providers.systemProperty("os.arch").get().lowercase()) {
-            "aarch64" -> OsArch.ARM64
+            // Windows on ARM64 runs the x64 test tools (jsShell, wasmEdge, JSC) under emulation.
+            "aarch64" -> if (osName == OsName.WINDOWS) OsArch.X86_64 else OsArch.ARM64
             else -> OsArch.X86_64
         }
         else -> OsArch.UNKNOWN

@@ -26,7 +26,9 @@ dependencies {
 
     implementation("org.jetbrains.kotlin:kotlin-reflect:$embeddedKotlinVersion") { isTransitive = false }
     implementation(kotlinBuildHelpers())
-    implementation("org.jetbrains.kotlin:kotlin-native-utils:${project.bootstrapKotlinVersion}")
+    // KT-82419: the published bootstrap kotlin-native-utils doesn't know about Windows ARM64 hosts (mingw_arm64),
+    // so build-tools compiles the in-repo native/utils sources instead (see sourceSets below).
+    implementation("org.jetbrains.kotlin:kotlin-util-io:${project.bootstrapKotlinVersion}")
 
     // To build Konan Gradle plugin
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:${project.bootstrapKotlinVersion}")
@@ -40,6 +42,7 @@ kotlin {
     sourceSets {
         main {
             kotlin.srcDir("src/main/kotlin")
+            kotlin.srcDir("../../native/utils/src")
         }
     }
     @OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalBuildToolsApi::class)

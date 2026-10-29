@@ -171,7 +171,12 @@ sealed class ClangArgs(
         is AppleConfigurables -> arrayOf(
                 "-stdlib=libc++"
         )
-        else -> emptyArray()
+        // MSYS2 CLANGARM64 ships libc++ (not libstdc++); KT-82419.
+        else -> if (target == KonanTarget.MINGW_ARM64 && !forJni) {
+            arrayOf("-stdlib=libc++", "-isystem", "$absoluteTargetSysRoot/include/c++/v1")
+        } else {
+            emptyArray()
+        }
     }
 
     // Kept for compatibility, remove later.

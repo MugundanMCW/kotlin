@@ -146,6 +146,8 @@ bitcode {
                     "__ANDROID__".takeIf { target.family == Family.ANDROID },
                     "USE_PE_COFF_SYMBOLS=1".takeIf { target.binaryFormat() == BinaryFormat.PE_COFF },
                     "UNICODE".takeIf { target.family == Family.MINGW },
+                    // windows.h/stdlib.h min/max macros break std::numeric_limits<>::max() with libc++ (KT-82419).
+                    "NOMINMAX".takeIf { target == KonanTarget.MINGW_ARM64 },
                     "USE_WINAPI_UNWIND=1".takeIf { target.supportsWinAPIUnwind() },
                     "USE_GCC_UNWIND=1".takeIf { target.supportsGccUnwind() }
             )
@@ -663,7 +665,14 @@ val stdlibBuildTask = tasks.register("stdlibBuildTask", KonanCompileTask::class)
     group = BasePlugin.BUILD_GROUP
     description = "Build the Kotlin/Native standard library"
 
-    this.compilerDistributionRoot.set(nativeBootstrapDistribution.map { it.root })
+    if (HostManager.host == KonanTarget.MINGW_ARM64) {
+        // KT-82419: there is no released kotlin-native-prebuilt for windows-aarch64 to bootstrap from, so compile the stdlib
+        // with the compiler built from this checkout (compiler jar + native libs; the stdlib is compiled with -nostdlib).
+        this.compilerDistributionRoot.set(nativeDistribution.map { it.root })
+        dependsOn(":kotlin-native:distCompiler")
+    } else {
+        this.compilerDistributionRoot.set(nativeBootstrapDistribution.map { it.root })
+    }
 
     this.outputDirectory.set(
             layout.buildDirectory.dir("stdlib/${HostManager.hostName}/stdlib")
