@@ -517,13 +517,6 @@ private fun KaDiagnosticConverterBuilder.addConversions5() {
             token,
         )
     }
-    add(FirErrors.IDENTITY_SENSITIVE_OPERATION_INSIDE_WILL_BECOME_VALUE_CLASS) { firDiagnostic ->
-        IdentitySensitiveOperationInsideWillBecomeValueClassImpl(
-            firSymbolBuilder.typeBuilder.buildKtType(firDiagnostic.a),
-            firDiagnostic as KtDiagnosticWithSource,
-            token,
-        )
-    }
     add(FirErrors.ABSTRACT_MEMBER_INCORRECTLY_DELEGATED.warningFactory) { firDiagnostic ->
         AbstractMemberIncorrectlyDelegatedWarningImpl(
             firSymbolBuilder.classifierBuilder.buildClassLikeSymbol(firDiagnostic.a),
@@ -4216,7 +4209,7 @@ private fun KaDiagnosticConverterBuilder.addConversions89() {
     }
     add(FirErrors.ILLEGAL_COMPANION_BLOCK) { firDiagnostic ->
         IllegalCompanionBlockImpl(
-            firSymbolBuilder.buildSymbol(firDiagnostic.a),
+            firDiagnostic.a,
             firDiagnostic as KtDiagnosticWithSource,
             token,
         )
@@ -6313,7 +6306,7 @@ private fun KaDiagnosticConverterBuilder.addConversions131() {
     }
     add(FirErrors.COMPANION_EXTENSION_RECEIVER_IS_TYPE_PARAMETER) { firDiagnostic ->
         CompanionExtensionReceiverIsTypeParameterImpl(
-            firSymbolBuilder.typeBuilder.buildKtType(firDiagnostic.a),
+            firSymbolBuilder.classifierBuilder.buildTypeParameterSymbol(firDiagnostic.a),
             firDiagnostic as KtDiagnosticWithSource,
             token,
         )
@@ -8767,7 +8760,7 @@ private fun KaDiagnosticConverterBuilder.addConversions189() {
     }
     add(FirErrors.COMPANION_EXTENSION_RECEIVER_IS_OBJECT) { firDiagnostic ->
         CompanionExtensionReceiverIsObjectImpl(
-            firSymbolBuilder.typeBuilder.buildKtType(firDiagnostic.a),
+            firSymbolBuilder.classifierBuilder.buildClassLikeSymbol(firDiagnostic.a),
             firDiagnostic as KtDiagnosticWithSource,
             token,
         )

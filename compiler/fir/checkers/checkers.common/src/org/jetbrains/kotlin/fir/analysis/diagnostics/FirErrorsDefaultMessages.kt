@@ -396,7 +396,6 @@ import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors.EXTENSION_IN_CLAS
 import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors.EXTENSION_PROPERTY_MUST_HAVE_ACCESSORS_OR_BE_ABSTRACT
 import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors.EXTENSION_PROPERTY_WITH_BACKING_FIELD
 import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors.EXTENSION_SHADOWED_BY_MEMBER
-import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors.IDENTITY_SENSITIVE_OPERATION_INSIDE_WILL_BECOME_VALUE_CLASS
 import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors.PROPERTY_WITH_BACKING_FIELD_INSIDE_WILL_BECOME_VALUE_CLASS
 import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors.SEALED_WILL_BECOME_VALUE_CLASS_CONSTRUCTOR_PROPERTY_PARAMETER
 import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors.UNRESOLVED_COLLECTION_LITERAL
@@ -2589,11 +2588,6 @@ object FirErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
             "Identity-sensitive operation on ''{0}'', which is annotated with ''@WillBecomeValue''. It will be forbidden once the class becomes a value class.",
             RENDER_TYPE,
         )
-        map.put(
-            IDENTITY_SENSITIVE_OPERATION_INSIDE_WILL_BECOME_VALUE_CLASS,
-            "Identity-sensitive operation on ''{0}'', which is annotated with ''@WillBecomeValue'', cannot be used inside it.",
-            RENDER_TYPE,
-        )
         map.put(WILL_BECOME_VALUE_CLASS_NOT_TOP_LEVEL, "Class annotated with '@WillBecomeValue' cannot be local or inner.")
         map.put(
             ABSENCE_OF_PRIMARY_CONSTRUCTOR_FOR_WILL_BECOME_VALUE_CLASS,
@@ -4201,7 +4195,7 @@ object FirErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         map.put(
             ILLEGAL_COMPANION_BLOCK,
             "Companion block inside {0} is prohibited.",
-            SYMBOL_KIND,
+            STRING,
         )
         map.put(
             COMPANION_BLOCK_NESTED,
@@ -4219,13 +4213,13 @@ object FirErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         )
         map.put(
             COMPANION_EXTENSION_RECEIVER_IS_OBJECT,
-            "Companion extension receiver type ''{0}'' resolves to an object. Companion extensions can only be declared on classes and interfaces.",
-            RENDER_TYPE,
+            "Companion extension receiver type resolves to ''{0}''. Companion extensions can only be declared on classes and interfaces.",
+            SYMBOL,
         )
         map.put(
             COMPANION_EXTENSION_RECEIVER_IS_TYPE_PARAMETER,
-            "Companion extension receiver type ''{0}'' resolves to a type parameter. Companion extensions can only be declared on classes and interfaces.",
-            RENDER_TYPE,
+            "Companion extension receiver type resolves to type parameter ''{0}''. Companion extensions can only be declared on classes and interfaces.",
+            SYMBOL,
         )
         map.put(
             COMPANION_EXTENSION_RECEIVER_ANNOTATED,

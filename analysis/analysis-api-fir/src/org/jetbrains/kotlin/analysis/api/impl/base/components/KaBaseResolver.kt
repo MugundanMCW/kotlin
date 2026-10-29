@@ -387,18 +387,6 @@ abstract class KaBaseResolver<T : KaSession> : KaBaseSessionComponent<T>(), KaIn
     }
 
     @Deprecated(
-        "Use `KtSimpleNameExpression` instead",
-        replaceWith = ReplaceWith(
-            "(element as? KtSimpleNameExpression)?.contextSensitiveResolutionStatus is KaContextSensitiveResolutionStatus.Used",
-            "org.jetbrains.kotlin.analysis.api.resolution.KaContextSensitiveResolutionStatus",
-        )
-    )
-    final override fun usesContextSensitiveResolution(reference: KtReference): Boolean =
-        withPsiValidityAssertion(reference.element) {
-            (reference.element as? KtSimpleNameExpression)?.let { contextSensitiveResolutionStatus(it) } is KaContextSensitiveResolutionStatus.Used
-        }
-
-    @Deprecated(
         message = "Use `KtSimpleNameExpression` instead",
         replaceWith = ReplaceWith("(element as? KtSimpleNameExpression)?.isImplicitReferenceToCompanion() == true"),
     )
@@ -455,7 +443,7 @@ internal fun KaCallCandidate.asKaCallCandidateInfo(): KaCallCandidateInfo {
  * implement [KaCall] directly. The exception is [KaCallableReferenceCall], which is part of the
  * new resolution API and intentionally does not extend the deprecated [KaCall] hierarchy. For
  * that case we emulate a legacy [KaCall] by re-encoding the reference as the corresponding
- * [KaSimpleFunctionCall] / [KaSimpleVariableAccessCall] view.
+ * `KaSimpleFunctionCall` / `KaSimpleVariableAccessCall` view.
  */
 private fun KaSimpleOrMultiCall.asKaCall(): KaCall = when (this) {
     is KaBaseCallableReferenceCall<*, *> -> asLegacyKaCall()

@@ -824,9 +824,6 @@ object DIAGNOSTICS_LIST : DiagnosticList("FirErrors") {
         val IDENTITY_SENSITIVE_OPERATION_ON_WILL_BECOME_VALUE_CLASS by warning<KtElement> {
             parameter<ConeKotlinType>("type")
         }
-        val IDENTITY_SENSITIVE_OPERATION_INSIDE_WILL_BECOME_VALUE_CLASS by error<KtElement> {
-            parameter<ConeKotlinType>("type")
-        }
         val WILL_BECOME_VALUE_CLASS_NOT_TOP_LEVEL by error<KtDeclaration>(PositioningStrategy.INLINE_OR_VALUE_MODIFIER)
         val ABSENCE_OF_PRIMARY_CONSTRUCTOR_FOR_WILL_BECOME_VALUE_CLASS by error<KtDeclaration>(PositioningStrategy.INLINE_OR_VALUE_MODIFIER)
         val EXPECT_WILL_BECOME_VALUE_CLASS_WITH_NO_PRIMARY_CONSTRUCTOR_HAS_SECONDARY by error<KtDeclaration>()
@@ -2530,7 +2527,7 @@ object DIAGNOSTICS_LIST : DiagnosticList("FirErrors") {
         val COMPANION_BLOCK_LATEINIT_IN_INTERFACE by error<PsiElement>(PositioningStrategy.LATEINIT_MODIFIER)
         val PRIVATE_CONST_IN_INTERFACE by error<PsiElement>(PositioningStrategy.VISIBILITY_MODIFIER)
         val ILLEGAL_COMPANION_BLOCK by error<PsiElement> {
-            parameter<FirBasedSymbol<*>>("parent")
+            parameter<String>("kind")
         }
         val COMPANION_BLOCK_NESTED by error<PsiElement>()
         val ILLEGAL_COMPANION_BLOCK_MEMBER by error<PsiElement>(PositioningStrategy.DECLARATION_SIGNATURE) {
@@ -2541,10 +2538,10 @@ object DIAGNOSTICS_LIST : DiagnosticList("FirErrors") {
             parameter<ConeKotlinType>("type")
         }
         val COMPANION_EXTENSION_RECEIVER_IS_OBJECT by error<PsiElement> {
-            parameter<ConeKotlinType>("type")
+            parameter<FirClassLikeSymbol<*>>("type")
         }
         val COMPANION_EXTENSION_RECEIVER_IS_TYPE_PARAMETER by error<PsiElement> {
-            parameter<ConeKotlinType>("type")
+            parameter<FirTypeParameterSymbol>("type")
         }
         val COMPANION_EXTENSION_RECEIVER_ANNOTATED by error<PsiElement>()
         val COMPANION_EXTENSION_NULLABLE_RECEIVER by error<PsiElement>()

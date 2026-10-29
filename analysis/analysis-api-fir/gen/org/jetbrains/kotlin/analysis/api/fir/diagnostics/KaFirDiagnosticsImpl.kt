@@ -2187,12 +2187,6 @@ internal class IdentitySensitiveOperationOnWillBecomeValueClassImpl(
     token: KaLifetimeToken,
 ) : KaAbstractFirDiagnostic<KtElement>(firDiagnostic, token), KaFirDiagnostic.IdentitySensitiveOperationOnWillBecomeValueClass
 
-internal class IdentitySensitiveOperationInsideWillBecomeValueClassImpl(
-    override val type: KaType,
-    firDiagnostic: KtDiagnosticWithSource,
-    token: KaLifetimeToken,
-) : KaAbstractFirDiagnostic<KtElement>(firDiagnostic, token), KaFirDiagnostic.IdentitySensitiveOperationInsideWillBecomeValueClass
-
 internal class WillBecomeValueClassNotTopLevelImpl(
     firDiagnostic: KtDiagnosticWithSource,
     token: KaLifetimeToken,
@@ -6018,7 +6012,7 @@ internal class PrivateConstInInterfaceImpl(
 ) : KaAbstractFirDiagnostic<PsiElement>(firDiagnostic, token), KaFirDiagnostic.PrivateConstInInterface
 
 internal class IllegalCompanionBlockImpl(
-    override val parent: KaSymbol,
+    override val kind: String,
     firDiagnostic: KtDiagnosticWithSource,
     token: KaLifetimeToken,
 ) : KaAbstractFirDiagnostic<PsiElement>(firDiagnostic, token), KaFirDiagnostic.IllegalCompanionBlock
@@ -6041,13 +6035,13 @@ internal class CompanionExtensionReceiverWithTypeArgumentsImpl(
 ) : KaAbstractFirDiagnostic<PsiElement>(firDiagnostic, token), KaFirDiagnostic.CompanionExtensionReceiverWithTypeArguments
 
 internal class CompanionExtensionReceiverIsObjectImpl(
-    override val type: KaType,
+    override val type: KaClassLikeSymbol,
     firDiagnostic: KtDiagnosticWithSource,
     token: KaLifetimeToken,
 ) : KaAbstractFirDiagnostic<PsiElement>(firDiagnostic, token), KaFirDiagnostic.CompanionExtensionReceiverIsObject
 
 internal class CompanionExtensionReceiverIsTypeParameterImpl(
-    override val type: KaType,
+    override val type: KaTypeParameterSymbol,
     firDiagnostic: KtDiagnosticWithSource,
     token: KaLifetimeToken,
 ) : KaAbstractFirDiagnostic<PsiElement>(firDiagnostic, token), KaFirDiagnostic.CompanionExtensionReceiverIsTypeParameter
