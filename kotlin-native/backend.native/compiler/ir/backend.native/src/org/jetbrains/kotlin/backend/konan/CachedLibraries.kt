@@ -284,7 +284,7 @@ class CachedLibraries(
         cache?.let {
             // A safety measure. We don't expect the compiler to produce non-stdlib caches on MinGW.
             // However, if it does, we are going to be aware without breaking the compilation.
-            if (target == KonanTarget.MINGW_X64 && !library.isNativeStdlib) {
+            if ((target == KonanTarget.MINGW_X64 || target == KonanTarget.MINGW_ARM64) && !library.isNativeStdlib) {
                 configuration.report(CliDiagnostics.KONAN_ARGUMENT_WARNING,
                         "MinGW target does not support caches for libraries except for stdlib. Found cache at ${cache.path}"
                 )

@@ -94,7 +94,7 @@ kotlin {
             HostManager.hostIsLinux -> linuxX64("native")
             else -> throw GradleException("Host OS is not supported in Kotlin/Native.")
         }
-    } else {
+    } else if (HostManager.hostIsSupported) {
         // Tier 1
         macosArm64()
         iosSimulatorArm64()
@@ -117,6 +117,15 @@ kotlin {
         watchosDeviceArm64()
         @Suppress("DEPRECATION", "DEPRECATION_ERROR") iosX64()
         @Suppress("DEPRECATION") linuxArm32Hfp()
+    } else {
+        // Host is not recognized by Kotlin/Native (e.g. Windows on ARM64, KT-82419-style hosts).
+        // Registering any native target here would force resolution of a Kotlin/Native bootstrap
+        // compiler for this host's classifier, which JetBrains has never published, breaking even
+        // pure-JVM/JS/Wasm builds. Skip native klib targets entirely on such hosts.
+        logger.warn(
+            "Skipping Kotlin/Native targets for :kotlin-power-assert-runtime: " +
+                    "host '${HostManager.hostOs()}-${HostManager.hostArchOrNull()}' has no published Kotlin/Native bootstrap compiler."
+        )
     }
 
     sourceSets {

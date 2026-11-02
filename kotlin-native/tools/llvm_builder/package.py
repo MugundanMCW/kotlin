@@ -5,15 +5,12 @@
 import argparse
 import hashlib
 import os
-import shlex
 import shutil
 import subprocess
 import sys
-import urllib.request
 from pathlib import Path
 from typing import List
 
-vsdevcmd = None
 isysroot = None
 
 ninja = 'ninja'
@@ -62,29 +59,6 @@ def detect_xcode_sdk_path():
     """
     return subprocess.check_output(['xcrun', '--show-sdk-path'],
                                    universal_newlines=True).rstrip()
-
-
-def detect_vsdevcmd():
-    """
-    Use vswhere (and download it, if needed) utility to find path to vsdevcmd.bat.
-    :return: path to vsdevcmd.bat
-    """
-    vswhere = shutil.which('vswhere')
-    if vswhere is None:
-        print("Downloading vswhere utility to detect path to vsdevcmd.bat automatically")
-        vswhere_url = "https://github.com/microsoft/vswhere/releases/download/2.8.4/vswhere.exe"
-        urllib.request.urlretrieve(vswhere_url, 'vswhere.exe')
-        vswhere = shutil.which('vswhere')
-        if vswhere is None:
-            sys.exit("Failed to retrieve vswhere utility. Please provide path to vsdevcmd.bat with --vsdevcmd")
-    vswhere_args = [vswhere, '-prerelease', '-latest', '-property', 'installationPath']
-    path_to_visual_studio = subprocess.check_output(vswhere_args, universal_newlines=True).rstrip()
-    vsdevcmd_path = os.path.join(path_to_visual_studio, "Common7", "Tools", "vsdevcmd.bat")
-    if not os.path.isfile(vsdevcmd_path):
-        sys.exit("vsdevcmd.bat is not found. Please provide path to vsdevcmd.bat with --vsdevcmd")
-    else:
-        print("Found vsdevcmd.bat: " + vsdevcmd_path)
-    return vsdevcmd_path
 
 
 def construct_cmake_flags(
@@ -214,26 +188,24 @@ def construct_cmake_flags(
 
 def run_command(command: List[str], dry_run):
     """
-    Execute single command in terminal/cmd.
+    Execute a single command.
 
-    Note that on Windows we prepare environment with vsdevcmd.bat.
+    This assumes the current shell already has the right build environment configured
+    (e.g. on Windows, that this script is being run from a Visual Studio Developer
+    Command Prompt / "x64 Native Tools Command Prompt for VS" / "ARM64 Native Tools
+    Command Prompt for VS", so that cl.exe/link.exe and INCLUDE/LIB are already on PATH).
+    No extra shell wrapping is used, so there is nothing for a shell to re-quote or
+    mis-parse: [command] is passed straight to subprocess.run as a list.
     """
     env = os.environ.copy()
-    if host_is_windows():
-        if vsdevcmd is None:
-            sys.exit("'VsDevCmd.bat' is not set!")
-        command = [vsdevcmd, "-arch=amd64", "&&"] + command
-        print("Running command: " + ' '.join(command))
-    else:
-        if host_is_darwin():
-            # sets CMAKE_OSX_SYSROOT
-            env['SDKROOT'] = 'macosx'
-        command = [shlex.quote(arg) for arg in command]
-        command = ' '.join(command)
-        print("Running command: " + command)
+    if host_is_darwin():
+        # sets CMAKE_OSX_SYSROOT
+        env['SDKROOT'] = 'macosx'
 
+    print("Running command: " + ' '.join(command))
     if not dry_run:
-        subprocess.run(command, shell=True, check=True, env=env)
+        subprocess.run(command, check=True, env=env)
+
 
 def force_create_directory(parent, name) -> Path:
     build_path = parent / name
@@ -315,8 +287,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--llvm-repo-destination", type=str, default="llvm-project",
                         help="Where LLVM repository should be downloaded.")
     # Environment setup.
-    parser.add_argument("--vsdevcmd", type=str, default=None,
-                        help="(Windows only) Path to VsDevCmd.bat")
     parser.add_argument("--ninja", type=str, default=None,
                         help="Override path to ninja")
     parser.add_argument("--cmake", type=str, default=None,
@@ -424,7 +394,7 @@ def setup_environment(args):
     """
     Setup globals that store information about script execution environment.
     """
-    global vsdevcmd, ninja, cmake, git, isysroot
+    global ninja, cmake, git, isysroot
     # TODO: We probably can download some of these binaries ourselves.
     if args.ninja:
         ninja = args.ninja
@@ -439,10 +409,13 @@ def setup_environment(args):
     elif shutil.which('git') is None:
         sys.exit("'git' is not found. Install or provide via --git argument.")
     if host_is_windows():
-        if args.vsdevcmd:
-            vsdevcmd = args.vsdevcmd
-        else:
-            vsdevcmd = detect_vsdevcmd()
+        if shutil.which('cl') is None:
+            sys.exit(
+                "'cl.exe' is not found on PATH. Run this script from a Visual Studio "
+                "Developer Command Prompt (e.g. 'Developer Command Prompt for VS', "
+                "'x64 Native Tools Command Prompt for VS', or 'ARM64 Native Tools "
+                "Command Prompt for VS')."
+            )
     elif host_is_darwin():
         if args.isysroot:
             isysroot = args.isysroot

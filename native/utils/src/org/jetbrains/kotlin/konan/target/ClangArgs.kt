@@ -32,7 +32,7 @@ sealed class ClangArgs(
     private val targetTriple = configurables.targetTriple
 
     // TODO: Should be dropped in favor of real MSVC target.
-    private val argsForWindowsJni = forJni && target == KonanTarget.MINGW_X64
+    private val argsForWindowsJni = forJni && (target == KonanTarget.MINGW_X64 || target == KonanTarget.MINGW_ARM64)
 
     @Deprecated("args for building runtime moved to runtime building code")
     val clangArgsSpecificForKonanSources: List<String>
@@ -90,7 +90,10 @@ sealed class ClangArgs(
             add(listOf("--gcc-toolchain=${configurables.absoluteGccToolchain}"))
         }
         val targetString: String = when {
-            argsForWindowsJni -> "x86_64-pc-windows-msvc"
+            argsForWindowsJni -> when (target) {
+                KonanTarget.MINGW_ARM64 -> "aarch64-pc-windows-msvc"
+                else -> "x86_64-pc-windows-msvc"
+            }
             configurables is AppleConfigurables -> {
                 targetTriple.copy(
                         os = "${targetTriple.os}${configurables.osVersionMin}"

@@ -1,6 +1,7 @@
 @file:OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
 
 import org.gradle.kotlin.dsl.support.serviceOf
+import org.jetbrains.kotlin.konan.target.HostManager
 
 plugins {
     id("common-configuration")
@@ -36,10 +37,19 @@ kotlin {
             isMingwX64 -> mingwX64("native")
             else -> throw GradleException("Host OS is not supported in Kotlin/Native.")
         }
-    } else {
+    } else if (HostManager.hostIsSupported) {
         linuxX64()
         macosArm64()
         mingwX64()
+    } else {
+        // Host is not recognized by Kotlin/Native (e.g. Windows on ARM64, KT-82419-style hosts).
+        // Registering any native target here would force resolution of a Kotlin/Native bootstrap
+        // compiler for this host's classifier, which JetBrains has never published, breaking even
+        // pure-JVM/JS/Wasm builds. Skip native klib targets entirely on such hosts.
+        logger.warn(
+            "Skipping Kotlin/Native targets for :plugin-annotations: " +
+                    "host '${HostManager.hostOs()}-${HostManager.hostArchOrNull()}' has no published Kotlin/Native bootstrap compiler."
+        )
     }
 
     sourceSets {

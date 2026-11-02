@@ -44,6 +44,7 @@ enum class StringListMetrics(
                 "macos_x64",
                 "macos_arm64",
                 "mingw_x64",
+                "mingw_arm64",
                 "wasm"
             )
         )

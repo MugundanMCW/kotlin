@@ -151,7 +151,8 @@ sealed class WindowsKit {
              */
             val arch = when (target) {
                 KonanTarget.MINGW_X64 -> "x64"
-                else -> error("WindowsKit.CustomPath supports only mingw_x64 for now.")
+                KonanTarget.MINGW_ARM64 -> "arm64"
+                else -> error("WindowsKit.CustomPath supports only mingw_x64 and mingw_arm64 for now.")
             }
             val libUmPath = windowsKitParts.resolve("Lib").resolve("um").resolve(arch)
             addAll(listOf("-L", libUmPath.toAbsolutePath().toString()))

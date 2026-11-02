@@ -177,7 +177,7 @@ class CacheBuilder(
         // Note: The libraries should be in the reverse topo-order here!
         config.klibDag.librariesReverseTopoSorted.forEach { library ->
             // For MinGW target avoid compiling caches for anything except stdlib.
-            if (config.target == KonanTarget.MINGW_X64 && !library.isNativeStdlib) {
+            if ((config.target == KonanTarget.MINGW_X64 || config.target == KonanTarget.MINGW_ARM64) && !library.isNativeStdlib) {
                 return@forEach
             }
             val isSubjectOfIC = library.isSubjectOfIC
