@@ -83,6 +83,13 @@ _Unwind_Reason_Code unwindCallback(struct _Unwind_Context* context, void* arg) {
 // winAPIUnwind() does:
 // - if `result` is not empty -> stores IPs of stacktrace(ignoring first `skipCount` entries) into `result`, and returns amount of stored IPs
 // - if `result` is empty  -> returns depth of stacktrace(ignoring first `skipCount` entries)
+// The program counter lives in a differently named CONTEXT field depending on the architecture.
+#if defined(_M_ARM64) || defined(__aarch64__)
+#define KONAN_CONTEXT_PC(ctx) ((ctx).Pc)
+#else
+#define KONAN_CONTEXT_PC(ctx) ((ctx).Rip)
+#endif
+
 NO_INLINE size_t winAPIUnwind(size_t skipCount, std_support::span<void*> result)
 {
     size_t resultSize = result.size();
@@ -94,21 +101,21 @@ NO_INLINE size_t winAPIUnwind(size_t skipCount, std_support::span<void*> result)
     do {
         DWORD64 imageBase = 0;
         UNWIND_HISTORY_TABLE historyTable = {};
-        PRUNTIME_FUNCTION FunctionEntry = RtlLookupFunctionEntry (context.Rip, &imageBase, &historyTable);
+        PRUNTIME_FUNCTION FunctionEntry = RtlLookupFunctionEntry (KONAN_CONTEXT_PC(context), &imageBase, &historyTable);
         if (!FunctionEntry)
             break;
         PVOID handlerData = nullptr;
         ULONG64 establisherFramePointers[2] = { 0, 0 };
-        RtlVirtualUnwind (UNW_FLAG_NHANDLER, imageBase, context.Rip, FunctionEntry, &context, &handlerData, establisherFramePointers, nullptr);
+        RtlVirtualUnwind (UNW_FLAG_NHANDLER, imageBase, KONAN_CONTEXT_PC(context), FunctionEntry, &context, &handlerData, establisherFramePointers, nullptr);
 
         if (skipCount > 0) {
             skipCount--;
         } else {
             if(doStoreIPs)
-                result[currentSize] = reinterpret_cast<void*>(context.Rip);
+                result[currentSize] = reinterpret_cast<void*>(KONAN_CONTEXT_PC(context));
             ++currentSize;
         }
-    } while (context.Rip != 0 && (currentSize < resultSize || !doStoreIPs));
+    } while (KONAN_CONTEXT_PC(context) != 0 && (currentSize < resultSize || !doStoreIPs));
 
     return currentSize;
 }

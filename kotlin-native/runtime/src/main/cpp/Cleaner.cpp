@@ -5,6 +5,8 @@
 
 #include "Cleaner.h"
 
+#include <exception>
+
 #include "ExternalRCRef.hpp"
 #include "Memory.h"
 

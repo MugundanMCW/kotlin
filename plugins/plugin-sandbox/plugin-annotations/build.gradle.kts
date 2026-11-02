@@ -37,7 +37,7 @@ kotlin {
             isMingwX64 -> mingwX64("native")
             else -> throw GradleException("Host OS is not supported in Kotlin/Native.")
         }
-    } else if (HostManager.hostIsSupported) {
+    } else if (HostManager.hostIsSupported && HostManager.host.name != "mingw_arm64") { // no published kotlin-native-prebuilt for mingw_arm64 (KT-82419)
         linuxX64()
         macosArm64()
         mingwX64()

@@ -105,7 +105,8 @@ fun MutableList<KotlinNativeTarget>.addIfEnabledOnHost(target: KotlinNativeTarge
 }
 
 kotlin {
-    with(nativeTargets) {
+    // no published kotlin-native-prebuilt for mingw_arm64 (KT-82419), and these are Apple-only targets anyway
+    if (HostManager.host.name != "mingw_arm64") with(nativeTargets) {
         @Suppress("DEPRECATION_ERROR", "DEPRECATION")
         addIfEnabledOnHost(macosX64())
         addIfEnabledOnHost(macosArm64())
