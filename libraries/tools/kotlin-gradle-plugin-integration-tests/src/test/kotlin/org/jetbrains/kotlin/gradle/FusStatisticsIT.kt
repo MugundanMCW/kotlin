@@ -43,6 +43,7 @@ import org.jetbrains.kotlin.gradle.util.swiftExportEmbedAndSignEnvVariables
 import org.jetbrains.kotlin.konan.target.HostManager
 import org.jetbrains.kotlin.statistics.metrics.StringAnonymizationPolicy
 import org.jetbrains.kotlin.statistics.metrics.StringListMetrics
+import org.jetbrains.kotlin.test.TestMetadata
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.condition.OS
 import org.junit.jupiter.api.io.TempDir
@@ -68,6 +69,7 @@ class FusStatisticsIT : KGPBaseTest() {
         "KOTLIN_COMPILER_EXECUTION_POLICY",
     )
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @DisplayName("for dokka")
     @GradleTest
@@ -95,6 +97,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @DisplayName("for dokka v2 html doc")
     @GradleTest
@@ -108,6 +111,7 @@ class FusStatisticsIT : KGPBaseTest() {
         testDokkaPlugin(gradleVersion, "org.jetbrains.dokka", expectedDokkaFusMetrics)
     }
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @DisplayName("for dokka v2 javadoc")
     @GradleTest
@@ -177,6 +181,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("native-cocoapods-template")
     @NativeGradlePluginTests
     @DisplayName("Verify that the metric for applying the Cocoapods plugin is being collected")
     @GradleTest
@@ -191,6 +196,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("native-incremental-simple")
     @NativeGradlePluginTests
     @DisplayName("Verify that the metric for native incremental compilation")
     @GradleTest
@@ -212,6 +218,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @DisplayName("Ensure that the metric are not collected if plugins were not applied to simple project")
     @GradleTest
@@ -228,6 +235,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("instantExecutionWithBuildSrc")
     @JvmGradlePluginTests
     @DisplayName("for project with buildSrc")
     @GradleTest
@@ -239,7 +247,6 @@ class FusStatisticsIT : KGPBaseTest() {
         ) {
             validateFusFiles(
                 "compileKotlin",
-                buildOptions = defaultBuildOptions.copy(logLevel = LogLevel.DEBUG),
             ) { fusFiles ->
                 assertFilesCombinedContains(
                     fusFiles,
@@ -250,6 +257,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @DisplayName("for failed build")
     @GradleTest
@@ -279,6 +287,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @JvmGradlePluginTests
     @DisplayName("fus metric for multiproject")
     @GradleTest
@@ -327,6 +336,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @JvmGradlePluginTests
     @DisplayName("fus metric for jvm feature flags")
     @GradleTest
@@ -355,6 +365,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("jvm-with-common")
     @MppGradlePluginTests
     @DisplayName("fus metrics for KMP JVM incremental compilation flags")
     @GradleTest
@@ -392,6 +403,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @DisplayName("general fields with configuration cache")
     @GradleTest
@@ -399,6 +411,7 @@ class FusStatisticsIT : KGPBaseTest() {
         testFusStatisticsWithConfigurationCache(gradleVersion, IsolatedProjectsMode.DISABLED)
     }
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @DisplayName("general fields with configuration cache and project isolation")
     @GradleTest
@@ -456,6 +469,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @DisplayName("configuration type metrics")
     @GradleTest
@@ -476,6 +490,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @GradleTest
     fun testFusMetricsCanBeDisabled(gradleVersion: GradleVersion) {
@@ -489,6 +504,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @GradleTest
     @GradleTestVersions(
@@ -524,6 +540,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("new-mpp-wasm-test")
     @MppGradlePluginTests
     @GradleTest
     fun testWasmIncrementalStatisticCollection(gradleVersion: GradleVersion) {
@@ -812,6 +829,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("native-incremental-simple")
     @DisplayName("native compiler arguments")
     @GradleTest
     @NativeGradlePluginTests
@@ -1104,6 +1122,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("multiplatformFlowAction")
     @DisplayName("add configuration metrics after build was finish")
     @GradleTest
     @MppGradlePluginTests
@@ -1122,6 +1141,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("multiClassloaderProject")
     @DisplayName("add configuration metrics after build was finish")
     @GradleTest
     @JvmGradlePluginTests
@@ -1158,6 +1178,7 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @DisplayName("disable FUS on TC")
     @GradleTest
     @JvmGradlePluginTests
@@ -1190,6 +1211,117 @@ class FusStatisticsIT : KGPBaseTest() {
         }
     }
 
+    @DisplayName("KT-90751: JVM compiler arguments from freeCompilerArgs")
+    @GradleTest
+    @JvmGradlePluginTests
+    fun testJvmFreeCompilerArguments(gradleVersion: GradleVersion) {
+        project("empty", gradleVersion) {
+            plugins {
+                kotlin("jvm")
+            }
+            buildScriptInjection {
+                // typed DSL control: reported even without the KT-90751 fix
+                kotlinJvm.compilerOptions.javaParameters.set(true)
+                kotlinJvm.compilerOptions.freeCompilerArgs.addAll(
+                    "-Xdebug", "-Xlambdas=class", "-Xbackend-threads=4",
+                    "-XXLanguage:+ContextParameters", "-progressive",
+                )
+            }
+            kotlinSourcesDir().source("main.kt") { "fun foo() = 1" }
+
+            validateFusFiles(
+                "compileKotlin",
+                buildAction = BuildActions.build,
+                buildAssertions = { assertTasksExecuted(":compileKotlin") },
+            ) { fusFiles ->
+                assertFilesCombinedContains(
+                    fusFiles,
+                    "CLI_JAVA_PARAMETERS_METADATA_ENABLED=true",
+                    "CLI_JVM_DEBUG_MODE_ENABLED=true",
+                    "CLI_LAMBDAS_CODEGEN_MODE=class",
+                    "CLI_BACKEND_THREADS_COUNT=4",
+                    "CLI_MANUALLY_CONFIGURED_LANGUAGE_FEATURES=+ContextParameters",
+                    "KOTLIN_PROGRESSIVE_MODE=true",
+                )
+            }
+        }
+    }
+
+    @DisplayName("KT-90751: JS compiler arguments from freeCompilerArgs")
+    @GradleTest
+    @JsGradlePluginTests
+    fun testJsFreeCompilerArguments(gradleVersion: GradleVersion) {
+        project(
+            "empty",
+            gradleVersion,
+            // KT-75899 Support Gradle Project Isolation in KGP JS & Wasm
+            buildOptions = defaultBuildOptions.disableIsolatedProjectsBecauseOfJsAndWasmKT75899(),
+        ) {
+            plugins {
+                kotlin("multiplatform")
+            }
+            buildScriptInjection {
+                project.applyMultiplatform {
+                    js()
+                    compilerOptions {
+                        freeCompilerArgs.addAll("-XXLanguage:+ContextParameters", "-Xgenerate-polyfills")
+                    }
+                    sourceSets.commonMain.get().compileStubSourceWithSourceSetName()
+                }
+            }
+
+            validateFusFiles(
+                "compileKotlinJs",
+                buildAction = BuildActions.build,
+                buildAssertions = { assertTasksExecuted(":compileKotlinJs") },
+            ) { fusFiles ->
+                assertFilesCombinedContains(
+                    fusFiles,
+                    "CLI_MANUALLY_CONFIGURED_LANGUAGE_FEATURES=+ContextParameters",
+                    "CLI_JS_POLYFILLS_GENERATED=true",
+                )
+            }
+        }
+    }
+
+    @DisplayName("KT-90751: Wasm compiler arguments from freeCompilerArgs")
+    @GradleTest
+    @WasmJsGradlePluginTests
+    fun testWasmFreeCompilerArguments(gradleVersion: GradleVersion) {
+        project(
+            "empty",
+            gradleVersion,
+            // KT-75899 Support Gradle Project Isolation in KGP JS & Wasm
+            buildOptions = defaultBuildOptions.disableIsolatedProjectsBecauseOfJsAndWasmKT75899(),
+        ) {
+            plugins {
+                kotlin("multiplatform")
+            }
+            buildScriptInjection {
+                project.applyMultiplatform {
+                    wasmJs()
+                    compilerOptions {
+                        freeCompilerArgs.addAll("-XXLanguage:+ContextParameters", "-Xwasm-enable-asserts")
+                    }
+                    sourceSets.commonMain.get().compileStubSourceWithSourceSetName()
+                }
+            }
+
+            validateFusFiles(
+                "compileKotlinWasmJs",
+                buildAction = BuildActions.build,
+                buildAssertions = { assertTasksExecuted(":compileKotlinWasmJs") },
+            ) { fusFiles ->
+                assertFilesCombinedContains(
+                    fusFiles,
+                    "CLI_MANUALLY_CONFIGURED_LANGUAGE_FEATURES=+ContextParameters",
+                    "CLI_WASM_ASSERTS_ENABLED=true",
+                )
+            }
+        }
+    }
+
+    @TestMetadata("simpleProject")
     @DisplayName("various compiler execution settings")
     @GradleTest
     @JvmGradlePluginTests

@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.buildtools.tests.arguments
 import org.jetbrains.kotlin.buildtools.api.*
 import org.jetbrains.kotlin.buildtools.api.BaseCompilationOperation.Companion.COMPILER_ARGUMENTS_LOG_LEVEL
 import org.jetbrains.kotlin.buildtools.api.BaseCompilationOperation.Companion.COMPILER_MESSAGE_RENDERER
+import org.jetbrains.kotlin.buildtools.api.BaseCompilationOperation.Companion.COMPILER_REF_INDEX
 import org.jetbrains.kotlin.buildtools.api.BaseCompilationOperation.Companion.GENERATE_COMPILER_REF_INDEX
 import org.jetbrains.kotlin.buildtools.api.BaseCompilationOperation.Companion.LOOKUP_TRACKER
 import org.jetbrains.kotlin.buildtools.api.arguments.ExperimentalCompilerArgument
@@ -90,8 +91,13 @@ class AvailableSinceTest : BaseCompilationTest() {
                     trySet(COMPILER_ARGUMENTS_LOG_LEVEL.availableSinceVersion) {
                         this[COMPILER_ARGUMENTS_LOG_LEVEL] = JvmCompilationOperation.CompilerArgumentsLogLevel.DEBUG
                     }
+                    @Suppress("DEPRECATION")
                     trySet(GENERATE_COMPILER_REF_INDEX.availableSinceVersion) {
+                        @Suppress("DEPRECATION")
                         this[GENERATE_COMPILER_REF_INDEX] = false
+                    }
+                    trySet(COMPILER_REF_INDEX.availableSinceVersion) {
+                        this[COMPILER_REF_INDEX] = null
                     }
                     trySet(COMPILER_MESSAGE_RENDERER.availableSinceVersion) {
                         this[COMPILER_MESSAGE_RENDERER] = object : CompilerMessageRenderer {
@@ -222,6 +228,11 @@ class AvailableSinceTest : BaseCompilationTest() {
                         trySet(JvmSnapshotBasedIncrementalCompilationConfiguration.USE_FIR_RUNNER.availableSinceVersion) {
                             @OptIn(ExperimentalCompilerArgument::class)
                             this[JvmSnapshotBasedIncrementalCompilationConfiguration.USE_FIR_RUNNER] = false
+                        }
+                        @OptIn(ExperimentalCompilerArgument::class)
+                        trySet(JvmSnapshotBasedIncrementalCompilationConfiguration.ENABLE_ERROR_RECOVERY_ROUND.availableSinceVersion) {
+                            @OptIn(ExperimentalCompilerArgument::class)
+                            this[JvmSnapshotBasedIncrementalCompilationConfiguration.ENABLE_ERROR_RECOVERY_ROUND] = true
                         }
                     }
             }
@@ -379,11 +390,14 @@ class AvailableSinceTest : BaseCompilationTest() {
                     trySet(JsDtsGenerationOperation.EXPORT_SUSPEND_LAMBDAS.availableSinceVersion) {
                         this[JsDtsGenerationOperation.EXPORT_SUSPEND_LAMBDAS] = true
                     }
+                    trySet(JsDtsGenerationOperation.COMPILE_SUSPEND_AS_JS_GENERATOR.availableSinceVersion) {
+                        this[JsDtsGenerationOperation.COMPILE_SUSPEND_AS_JS_GENERATOR] = true
+                    }
                     trySet(JsDtsGenerationOperation.DATA_CLASS_COPY_RESPECTS_CONSTRUCTOR_VISIBILITY.availableSinceVersion) {
                         this[JsDtsGenerationOperation.DATA_CLASS_COPY_RESPECTS_CONSTRUCTOR_VISIBILITY] = true
                     }
-                    trySet(JsDtsGenerationOperation.EXPORT_UNTYPED_AS_UNKNOWN.availableSinceVersion) {
-                        this[JsDtsGenerationOperation.EXPORT_UNTYPED_AS_UNKNOWN] = true
+                    trySet(JsDtsGenerationOperation.USE_UNKNOWN_INSTEAD_ANY.availableSinceVersion) {
+                        this[JsDtsGenerationOperation.USE_UNKNOWN_INSTEAD_ANY] = true
                     }
                 }
             }

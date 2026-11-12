@@ -283,6 +283,12 @@ public class LLSerializationBlackBoxTestGenerated extends AbstractLLSerializatio
     }
 
     @Test
+    @TestMetadata("JavaEnums.kt")
+    public void testJavaEnums() {
+      run("JavaEnums.kt");
+    }
+
+    @Test
     @TestMetadata("KeepGeneratedSerializer.kt")
     public void testKeepGeneratedSerializer() {
       run("KeepGeneratedSerializer.kt");
@@ -358,6 +364,12 @@ public class LLSerializationBlackBoxTestGenerated extends AbstractLLSerializatio
     @TestMetadata("namedCompanions.kt")
     public void testNamedCompanions() {
       run("namedCompanions.kt");
+    }
+
+    @Test
+    @TestMetadata("pinnedBugSerializationGh2241.kt")
+    public void testPinnedBugSerializationGh2241() {
+      run("pinnedBugSerializationGh2241.kt");
     }
 
     @Test

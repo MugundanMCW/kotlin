@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.analysis.test.framework.test.configurators.TestModul
 import org.jetbrains.kotlin.analysis.test.framework.test.configurators.AnalysisSessionMode;
 import org.jetbrains.kotlin.analysis.test.framework.test.configurators.AnalysisApiMode;
 import org.jetbrains.kotlin.analysis.test.framework.services.TargetPlatformEnum;
-import org.jetbrains.kotlin.analysis.api.impl.base.test.cases.components.resolver.AbstractResolveSingleByPsiTest;
+import org.jetbrains.kotlin.analysis.api.fir.test.cases.components.resolver.AbstractResolveSingleByPsiTest;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -7871,6 +7871,18 @@ public class FirIdeNormalAnalysisSourceLikeModuleResolveSingleByPsiTestGenerated
     @TestMetadata("variableWithInvokeFunctionCall_extensionReceiver.kt")
     public void testVariableWithInvokeFunctionCall_extensionReceiver() {
       run("variableWithInvokeFunctionCall_extensionReceiver.kt");
+    }
+
+    @Test
+    @TestMetadata("whereClauseAnnotation.kt")
+    public void testWhereClauseAnnotation() {
+      run("whereClauseAnnotation.kt");
+    }
+
+    @Test
+    @TestMetadata("whereClauseAnnotationOnUndeclaredName.kt")
+    public void testWhereClauseAnnotationOnUndeclaredName() {
+      run("whereClauseAnnotationOnUndeclaredName.kt");
     }
 
     @Test

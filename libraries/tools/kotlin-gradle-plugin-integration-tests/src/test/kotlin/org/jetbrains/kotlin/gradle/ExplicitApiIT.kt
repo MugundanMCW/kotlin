@@ -5,9 +5,9 @@
 
 package org.jetbrains.kotlin.gradle
 
-import org.gradle.api.logging.LogLevel
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.gradle.testbase.*
+import org.jetbrains.kotlin.test.TestMetadata
 import org.jetbrains.kotlin.testFederation.MustRunOnChangesInFrontend
 import org.jetbrains.kotlin.testFederation.MustRunOnChangesInGradle
 import org.junit.jupiter.api.DisplayName
@@ -17,6 +17,7 @@ import kotlin.io.path.appendText
 @MustRunOnChangesInGradle
 class ExplicitApiIT : KGPBaseTest() {
 
+    @TestMetadata("simpleProject")
     @JvmGradlePluginTests
     @DisplayName("Explicit api strict mode produces errors on violation")
     @MustRunOnChangesInFrontend
@@ -25,7 +26,6 @@ class ExplicitApiIT : KGPBaseTest() {
         project(
             "simpleProject",
             gradleVersion,
-            buildOptions = defaultBuildOptions.copy(logLevel = LogLevel.DEBUG)
         ) {
             buildGradle.appendText(
                 """
@@ -43,6 +43,7 @@ class ExplicitApiIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("AndroidSimpleApp")
     @DisplayName("Explicit api mode is enabled only for non-test variants in Android project")
     @AndroidGradlePluginTests
     @GradleAndroidTest
@@ -56,7 +57,6 @@ class ExplicitApiIT : KGPBaseTest() {
             gradleVersion,
             buildOptions = defaultBuildOptions.copy(
                 androidVersion = agpVersion,
-                logLevel = LogLevel.DEBUG
             ),
             buildJdk = jdkVersion.location
         ) {
@@ -84,6 +84,7 @@ class ExplicitApiIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("AndroidSimpleApp")
     @DisplayName("Explicit api mode is enabled if added inside android extension")
     @AndroidGradlePluginTests
     @GradleAndroidTest
@@ -97,7 +98,6 @@ class ExplicitApiIT : KGPBaseTest() {
             gradleVersion,
             buildOptions = defaultBuildOptions.copy(
                 androidVersion = agpVersion,
-                logLevel = LogLevel.DEBUG,
             ),
             buildJdk = jdkVersion.location
         ) {
@@ -121,6 +121,7 @@ class ExplicitApiIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("AndroidExtraSourceDirsApp")
     @DisplayName("Explicit api mode is enabled only for non-test variants in Android project in customized source directories")
     @AndroidGradlePluginTests
     @MustRunOnChangesInFrontend
@@ -135,7 +136,6 @@ class ExplicitApiIT : KGPBaseTest() {
             gradleVersion,
             buildOptions = defaultBuildOptions.copy(
                 androidVersion = agpVersion,
-                logLevel = LogLevel.DEBUG,
             ),
             buildJdk = jdkVersion.location
         ) {

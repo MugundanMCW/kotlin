@@ -13,10 +13,10 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.vfs.VirtualFileSystem
 import com.intellij.psi.PsiManager
-import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.util.io.URLUtil
 import org.jetbrains.kotlin.CoreEnvironmentDeprecation
 import org.jetbrains.kotlin.KtPsiSourceFile
+import org.jetbrains.kotlin.KtSourceFile
 import org.jetbrains.kotlin.cli.CliDiagnostics.COMPILER_ARGUMENTS_ERROR
 import org.jetbrains.kotlin.cli.CliDiagnostics.COMPILER_PLUGIN_INITIALIZATION_ERROR
 import org.jetbrains.kotlin.cli.CliDiagnostics.ROOTS_RESOLUTION_WARNING
@@ -53,6 +53,7 @@ import org.jetbrains.kotlin.load.kotlin.PackagePartProvider
 import org.jetbrains.kotlin.load.kotlin.VirtualFileFinderFactory
 import org.jetbrains.kotlin.modules.Module
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.parsing.KotlinLightParser
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtImplementationDetail
@@ -127,11 +128,8 @@ object JvmFrontendPipelinePhase : PipelinePhase<ConfigurationPipelineArtifact, J
         }
 
         perfManager?.notifyPhaseStarted(PhaseType.Analysis)
-        if (!configuration.parserMode.treeBased) {
-            val ktFiles = allSources.map { (it as KtPsiSourceFile).psiFile as KtFile }
-            if (checkIfScriptsInCommonSources(configuration, ktFiles)) {
-                return null
-            }
+        if (checkIfScriptsInCommonSources(configuration, allSources, sources.commonSources)) {
+            return null
         }
 
         val [librariesClasspath, incrementalCompilationContext] =
@@ -156,7 +154,12 @@ object JvmFrontendPipelinePhase : PipelinePhase<ConfigurationPipelineArtifact, J
             librariesClasspath = librariesClasspath,
             libraryList = libraryList,
             isCommonSource = sources.isCommonSourceForLt,
-            isScript = { ((it as? KtPsiSourceFile)?.psiFile as? KtFile)?.isScript() == true },
+            isScript = {
+                when (it) {
+                    is KtPsiSourceFile -> (it.psiFile as? KtFile)?.isScript() == true
+                    else -> KotlinLightParser.isParsedAsScript(it)
+                }
+            },
             fileBelongsToModule = sources.fileBelongsToModuleForLt,
             incrementalCompilationContext,
         )
@@ -272,22 +275,53 @@ object JvmFrontendPipelinePhase : PipelinePhase<ConfigurationPipelineArtifact, J
             ?.mapTo(destination) { it::class.qualifiedName }
     }
 
-    private fun checkIfScriptsInCommonSources(configuration: CompilerConfiguration, ktFiles: List<KtFile>): Boolean {
-        val lastHmppModule = configuration.hmppModuleStructure?.modules?.lastOrNull()
+    private fun checkIfScriptsInCommonSources(configuration: CompilerConfiguration, allSources: List<KtSourceFile>, commonSources: Collection<KtSourceFile>): Boolean {
+        val hmppModuleStructure = configuration.hmppModuleStructure
+        val lastHmppModuleName = hmppModuleStructure?.modules?.lastOrNull()?.name
 
         @OptIn(KtImplementationDetail::class)
-        val commonScripts = ktFiles.filter { it.isScript() && (it.isCommonSource == true || it.hmppModuleName != lastHmppModule?.name) }
+        val commonScripts = allSources.filter { source ->
+            when (source) {
+                is KtPsiSourceFile -> {
+                    val psiFile = source.psiFile as KtFile
+                    psiFile.isScript() && (psiFile.isCommonSource == true || psiFile.hmppModuleName != lastHmppModuleName)
+                }
+                else -> when {
+                    !KotlinLightParser.isParsedAsScript(source) -> false
+                    source in commonSources -> true
+                    else -> {
+                        val path = source.path ?: return@filter false
+                        hmppModuleStructure?.getModuleNameForSource(path) != lastHmppModuleName
+                    }
+                }
+            }
+        }
         if (commonScripts.isNotEmpty()) {
             val cwd = File(".").absoluteFile
-            fun renderFile(ktFile: KtFile) = File(ktFile.virtualFilePath).descendantRelativeTo(cwd).path
+            fun renderFile(ktFile: KtFile): String = File(ktFile.virtualFilePath).descendantRelativeTo(cwd).path
             configuration.report(
                 COMPILER_ARGUMENTS_ERROR,
                 "Script files in common source roots are not supported. Misplaced files:\n    " +
-                        commonScripts.joinToString("\n    ", transform = ::renderFile)
+                        commonScripts.joinToString("\n    ", transform = { source ->
+                            if (source is KtPsiSourceFile) {
+                                renderFile(source.psiFile as KtFile)
+                            } else {
+                                source.path ?: source.name
+                            }
+                        })
             )
             return true
         }
         return false
+    }
+
+    // TODO KT-91421: delete this function (use global org.jetbrains.kotlin.config.getModuleNameForSource instead)
+    // Perform "sanitization" around \ and / during creation of HmppCliModuleStructure
+    private fun HmppCliModuleStructure.getModuleNameForSource(source: String): String? {
+        val sourceIndependent = source.replace('\\', '/')
+        return modules.firstOrNull { module ->
+            sourceIndependent in module.sources.map { it.replace('\\', '/') }
+        }?.name
     }
 
     fun createLibraryListForJvm(
@@ -666,7 +700,7 @@ object JvmFrontendPipelinePhase : PipelinePhase<ConfigurationPipelineArtifact, J
     private class ProjectEnvironmentWithCoreEnvironmentEmulation(
         project: Project,
         knownFileSystems: List<VirtualFileSystem>,
-        getPackagePartProviderFn: (GlobalSearchScope) -> PackagePartProvider,
+        getPackagePartProviderFn: (JvmClasspath) -> PackagePartProvider,
         initialRoots: List<JavaRoot>,
         val configuration: CompilerConfiguration,
         val projectEnvironment: KotlinCoreEnvironment.ProjectEnvironment,

@@ -62,6 +62,7 @@ import org.jetbrains.kotlin.extensions.internal.CandidateInterceptor
 import org.jetbrains.kotlin.extensions.internal.InternalNonStableExtensionPoints
 import org.jetbrains.kotlin.extensions.internal.TypeResolutionInterceptor
 import org.jetbrains.kotlin.idea.KotlinFileType
+import org.jetbrains.kotlin.jvm.environment.JvmClasspath
 import org.jetbrains.kotlin.load.java.structure.impl.source.JavaElementSourceFactory
 import org.jetbrains.kotlin.load.java.structure.impl.source.JavaFixedElementSourceFactory
 import org.jetbrains.kotlin.load.kotlin.KotlinBinaryClassCache
@@ -77,11 +78,8 @@ import org.jetbrains.kotlin.resolve.extensions.ExtraImportsProviderExtension
 import org.jetbrains.kotlin.resolve.extensions.SyntheticResolveExtension
 import org.jetbrains.kotlin.resolve.jvm.KotlinJavaPsiFacade
 import org.jetbrains.kotlin.resolve.jvm.extensions.AnalysisHandlerExtension
-import org.jetbrains.kotlin.resolve.jvm.extensions.PackageFragmentProviderExtension
 import org.jetbrains.kotlin.resolve.jvm.extensions.SyntheticJavaResolveExtension
 import org.jetbrains.kotlin.resolve.jvm.modules.JavaModuleResolver
-import org.jetbrains.kotlin.resolve.lazy.declarations.CliDeclarationProviderFactoryService
-import org.jetbrains.kotlin.resolve.lazy.declarations.DeclarationProviderFactoryService
 import org.jetbrains.kotlin.serialization.DescriptorSerializerPlugin
 import java.io.File
 
@@ -212,7 +210,6 @@ class KotlinCoreEnvironment private constructor(
     init {
         projectEnvironment.configureProjectEnvironment(configuration, configFiles)
         val project = projectEnvironment.project
-        project.registerService(DeclarationProviderFactoryService::class.java, CliDeclarationProviderFactoryService(sourceFiles))
 
         sourceFiles += createSourceFilesFromSourceRoots(
             configuration, project,
@@ -326,8 +323,17 @@ class KotlinCoreEnvironment private constructor(
         sourceFiles += createSourceFilesFromSourceRoots(configuration, project, roots).toSet() - sourceFiles
     }
 
+    /** Scope-based factory for the K1 analysis entry points only; K2 code uses the [JvmClasspath] overload. */
+    @K1Deprecation
     fun createPackagePartProvider(scope: GlobalSearchScope): JvmPackagePartProvider {
-        return JvmPackagePartProvider(configuration.languageVersionSettings, scope).apply {
+        return JvmPackagePartProvider(configuration.languageVersionSettings) { it in scope }.apply {
+            addRoots(initialRoots, configuration)
+            packagePartProviders += this
+        }
+    }
+
+    fun createPackagePartProvider(classpath: JvmClasspath): JvmPackagePartProvider {
+        return JvmPackagePartProvider(configuration.languageVersionSettings, classpath).apply {
             addRoots(initialRoots, configuration)
             packagePartProviders += this
         }
@@ -685,7 +691,6 @@ class KotlinCoreEnvironment private constructor(
             SyntheticResolveExtension.registerExtensionPoint(project)
             SyntheticJavaResolveExtension.registerExtensionPoint(project)
             AnalysisHandlerExtension.registerExtensionPoint(project)
-            PackageFragmentProviderExtension.registerExtensionPoint(project)
             StorageComponentContainerContributor.registerExtensionPoint(project)
             DeclarationAttributeAltererExtension.registerExtensionPoint(project)
             TypeResolutionInterceptor.registerExtensionPoint(project)

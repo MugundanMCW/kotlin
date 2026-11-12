@@ -6,9 +6,9 @@
 package org.jetbrains.kotlin.backend.konan
 
 import org.jetbrains.kotlin.K1Deprecation
+import org.jetbrains.kotlin.builtins.DefaultBuiltIns
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.builtins.functions.functionInterfacePackageFragmentProvider
-import org.jetbrains.kotlin.builtins.konan.KonanBuiltIns
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.contracts.ContractDeserializerImpl
 import org.jetbrains.kotlin.descriptors.*
@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.library.components.metadata
 import org.jetbrains.kotlin.library.isAnyPlatformStdlib
 import org.jetbrains.kotlin.library.metadata.*
 import org.jetbrains.kotlin.library.uniqueName
+import org.jetbrains.kotlin.metadata.ProtoBuf
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.parentOrNull
@@ -31,11 +32,12 @@ import org.jetbrains.kotlin.resolve.ImplicitIntegerCoercion
 import org.jetbrains.kotlin.resolve.sam.SamConversionResolverImpl
 import org.jetbrains.kotlin.serialization.deserialization.*
 import org.jetbrains.kotlin.storage.StorageManager
+import org.jetbrains.kotlin.types.KotlinType
+import org.jetbrains.kotlin.types.SimpleType
 import org.jetbrains.kotlin.utils.addToStdlib.runIf
 
 @K1Deprecation
 class K1KlibMetadataModuleDescriptorFactoryImpl {
-    val createBuiltIns: (StorageManager) -> KotlinBuiltIns = ::KonanBuiltIns
     private val flexibleTypeDeserializer: FlexibleTypeDeserializer = NullFlexibleTypeDeserializer
 
     private fun createDescriptorOptionalBuiltIns(
@@ -45,10 +47,9 @@ class K1KlibMetadataModuleDescriptorFactoryImpl {
             builtIns: KotlinBuiltIns?,
             lookupTracker: LookupTracker
     ): ModuleDescriptorImpl {
-
         val moduleName = Name.special("<${library.uniqueName}>")
         val moduleOrigin = DeserializedKlibModuleOrigin(library)
-        val builtInsToUse = builtIns ?: createBuiltIns(storageManager)
+        val builtInsToUse = builtIns ?: DefaultBuiltIns(loadBuiltInsFromCurrentClassLoader = false)
 
         val moduleDescriptor = ModuleDescriptorImpl(
                 moduleName,
@@ -201,6 +202,7 @@ class K1KlibMetadataModuleDescriptorFactoryImpl {
 }
 
 
+@OptIn(K1Deprecation::class)
 private fun createDeserializedPackageFragments(
         library: KotlinLibrary,
         moduleDescriptor: ModuleDescriptor,
@@ -240,4 +242,14 @@ private fun createDeserializedPackageFragments(
                 )
         }
     }
+}
+
+@OptIn(K1Deprecation::class)
+private object NullFlexibleTypeDeserializer : FlexibleTypeDeserializer {
+    override fun create(
+            proto: ProtoBuf.Type,
+            flexibleId: String,
+            lowerBound: SimpleType,
+            upperBound: SimpleType
+    ): KotlinType = error("Illegal use of flexible type deserializer.")
 }

@@ -3478,6 +3478,24 @@ public class PsiParsingTestGenerated extends AbstractPsiParsingTest {
     }
 
     @Test
+    @TestMetadata("expectFullValueClassWithNoConstructor.kt")
+    public void testExpectFullValueClassWithNoConstructor() {
+      run("expectFullValueClassWithNoConstructor.kt");
+    }
+
+    @Test
+    @TestMetadata("expectInlineClassWithNoConstructor.kt")
+    public void testExpectInlineClassWithNoConstructor() {
+      run("expectInlineClassWithNoConstructor.kt");
+    }
+
+    @Test
+    @TestMetadata("expectJvmInlineValueClassWithNoConstructor.kt")
+    public void testExpectJvmInlineValueClassWithNoConstructor() {
+      run("expectJvmInlineValueClassWithNoConstructor.kt");
+    }
+
+    @Test
     @TestMetadata("inlineClassOldSyntax.kt")
     public void testInlineClassOldSyntax() {
       run("inlineClassOldSyntax.kt");
@@ -4231,6 +4249,24 @@ public class PsiParsingTestGenerated extends AbstractPsiParsingTest {
     @TestMetadata("local.kt")
     public void testLocal() {
       run("local.kt");
+    }
+
+    @Test
+    @TestMetadata("localClassFollowedByCallNamedLikeModifier.kt")
+    public void testLocalClassFollowedByCallNamedLikeModifier() {
+      run("localClassFollowedByCallNamedLikeModifier.kt");
+    }
+
+    @Test
+    @TestMetadata("localClassFollowedByCallNamedLikeModifierScript.kts")
+    public void testLocalClassFollowedByCallNamedLikeModifierScript() {
+      run("localClassFollowedByCallNamedLikeModifierScript.kts");
+    }
+
+    @Test
+    @TestMetadata("localClassFollowedByCallNamedLikeModifierWithErrors.kt")
+    public void testLocalClassFollowedByCallNamedLikeModifierWithErrors() {
+      run("localClassFollowedByCallNamedLikeModifierWithErrors.kt");
     }
 
     @Test

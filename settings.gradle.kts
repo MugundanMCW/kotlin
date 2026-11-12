@@ -37,7 +37,7 @@ pluginManagement {
 
     plugins {
         id("de.undercouch.download") version "5.1.0"
-        id("com.autonomousapps.dependency-analysis") version "3.6.1"
+        id("com.autonomousapps.dependency-analysis") version "3.19.2"
     }
 }
 
@@ -148,6 +148,11 @@ include(
     ":benchmarks:build-tools:incremental-compilation",
     ":benchmarks:frontend:compilation",
     ":benchmarks:frontend:misc",
+    ":benchmarks:jvm:kapt:source-generator",
+    ":benchmarks:jvm:kapt:synthetic-processor",
+    ":benchmarks:jvm:kapt:samples:synthetic-noop",
+    ":benchmarks:jvm:kapt:samples:dagger-sample",
+    ":benchmarks:jvm:kapt:samples:mapstruct-sample",
     ":benchmarks:jvm:reflection",
     ":compiler",
     ":compiler:util",
@@ -223,6 +228,7 @@ include(
     ":compiler:tests-common",
     ":compiler:tests-integration",
     ":compiler:jklib.tests",
+    ":compiler:jvm.tests",
     ":js:js.ast",
     ":js:js.sourcemap",
     ":js:js.parser",
@@ -541,11 +547,6 @@ include(
     ":compiler:fir:diagnostic-renderers",
     ":compiler:fir:entrypoint",
     ":compiler:fir:analysis-tests",
-    ":compiler:fir:analysis-tests:legacy-fir-tests"
-)
-
-include(
-    ":kotlin-scripting-ide-common"
 )
 
 include(
@@ -1032,7 +1033,6 @@ if (buildProperties.isInIdeaSync.get()) {
         file("$rootDir/plugins/compose/compiler-hosted/runtime-tests")
 }
 
-project(":kotlin-scripting-ide-common").projectDir = File("$rootDir/plugins/scripting/scripting-ide-common")
 project(":kotlin-scripting-compiler").projectDir = File("$rootDir/plugins/scripting/scripting-compiler")
 project(":kotlin-scripting-compiler-impl").projectDir = File("$rootDir/plugins/scripting/scripting-compiler-impl")
 

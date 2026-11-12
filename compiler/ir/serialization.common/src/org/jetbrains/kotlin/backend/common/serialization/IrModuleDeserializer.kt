@@ -92,12 +92,6 @@ abstract class IrModuleDeserializer(
     abstract fun tryDeserializeIrSymbol(idSig: IdSignature, symbolKind: BinarySymbolData.SymbolKind): IrSymbol?
     abstract fun deserializedSymbolNotFound(idSig: IdSignature): Nothing
 
-    open fun referenceSimpleFunctionByLocalSignature(file: IrFile, idSignature: IdSignature): IrSimpleFunctionSymbol =
-        error("Unsupported operation")
-
-    open fun referencePropertyByLocalSignature(file: IrFile, idSignature: IdSignature): IrPropertySymbol =
-        error("Unsupported operation")
-
     open fun declareIrSymbol(symbol: IrSymbol) {
         val signature = symbol.signature
         require(signature != null) { "Symbol is not public API" }
@@ -122,13 +116,13 @@ abstract class IrModuleDeserializer(
 
     open val strategyResolver: DeserializationStrategyResolver = DeserializationStrategy.ONLY_DECLARATION_HEADERS
 
-    open fun fileDeserializers(): Collection<IrFileDeserializer> = emptyList()
+    open val fileDeserializers: Map<IrFile, IrFileDeserializer> get() = emptyMap()
 
     val compatibilityMode: CompatibilityMode get() = CompatibilityMode(libraryAbiVersion)
 
     open fun getAllMatchingSignatures(callableId: CallableId, signatureKind: IrDeserializer.TopLevelSymbolKind): List<IdSignature> {
-        return this.fileDeserializers().flatMap {
-            it.getAllMatchingSignatures(callableId, signatureKind)
+        return fileDeserializers.flatMap { [_, fileDeserializer] ->
+            fileDeserializer.getAllMatchingSignatures(callableId, signatureKind)
         }
     }
 }
@@ -193,12 +187,6 @@ class IrModuleDeserializerWithBuiltIns(
         return checkIsFunctionInterface(topLevel) || idSig in delegate
     }
 
-    override fun referenceSimpleFunctionByLocalSignature(file: IrFile, idSignature: IdSignature) : IrSimpleFunctionSymbol =
-        delegate.referenceSimpleFunctionByLocalSignature(file, idSignature)
-
-    override fun referencePropertyByLocalSignature(file: IrFile, idSignature: IdSignature): IrPropertySymbol =
-        delegate.referencePropertyByLocalSignature(file, idSignature)
-
     override fun deserializeReachableDeclarations() {
         delegate.deserializeReachableDeclarations()
     }
@@ -251,9 +239,8 @@ class IrModuleDeserializerWithBuiltIns(
         delegate.addModuleReachableTopLevel(topLevelDeclarationSignature)
     }
 
-    override fun fileDeserializers(): Collection<IrFileDeserializer> {
-        return delegate.fileDeserializers()
-    }
+    override val fileDeserializers: Map<IrFile, IrFileDeserializer>
+        get() = delegate.fileDeserializers
 
     override fun postProcess() {
         delegate.postProcess()

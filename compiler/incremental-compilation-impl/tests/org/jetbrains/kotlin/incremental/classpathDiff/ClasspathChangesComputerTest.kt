@@ -16,6 +16,8 @@ import org.jetbrains.kotlin.incremental.classpathDiff.ClasspathSnapshotTestCommo
 import org.jetbrains.kotlin.incremental.classpathDiff.ClasspathSnapshotTestCommon.ClassFileUtil.snapshot
 import org.jetbrains.kotlin.incremental.classpathDiff.ClasspathSnapshotTestCommon.CompileUtil.compileAll
 import org.jetbrains.kotlin.incremental.classpathDiff.impl.ClassFile
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.resolve.jvm.JvmClassName
 import org.jetbrains.kotlin.resolve.sam.SAM_LOOKUP_NAME
 import org.junit.jupiter.api.Test
@@ -667,6 +669,85 @@ class KotlinAndJavaClasspathChangesComputerTest : ClasspathSnapshotTestCommon() 
                 "com.example.ChangedJavaSuperClass",
                 "com.example.KotlinSubClassOfChangedJavaSuperClass",
                 "com.example.JavaSubClassOfChangedJavaSuperClass"
+            )
+        ).assertEquals(changes)
+    }
+
+    @Test
+    fun testPackageInfoChange() {
+        val changes = computeClasspathChanges(File(testDataDir, "JavaOnly/testPackageInfoChange/src"), tmpDir)
+        Changes(
+            lookupSymbols = setOf(
+                // Changed
+                LookupSymbol(name = "package-info", scope = "com.example"),
+                // Impacted: every class in the package, and (transitively) their subclasses in other packages
+                LookupSymbol(name = "ClassInPackage", scope = "com.example"),
+                LookupSymbol(name = "SubClassOfClassInPackage", scope = "com.other"),
+            ),
+            fqNames = setOf(
+                "com.example.package-info",
+                "com.example.ClassInPackage",
+                "com.other.SubClassOfClassInPackage",
+            )
+        ).assertEquals(changes)
+    }
+
+    @Test
+    fun testModuleInfoChange() {
+        val changes = computeClasspathChanges(File(testDataDir, "JavaOnly/testModuleInfoChange/src"), tmpDir)
+        Changes(
+            lookupSymbols = setOf(
+                // Changed
+                LookupSymbol(name = "module-info", scope = "mid"),
+                // Impacted
+                LookupSymbol(name = "M", scope = "mpkg"),
+                LookupSymbol(name = "module-info", scope = "base"),
+                LookupSymbol(name = "A", scope = "apkg"),
+            ),
+            fqNames = setOf(
+                "mid.module-info",
+                "mpkg.M",
+                "base.module-info",
+                "apkg.A",
+            )
+        ).assertEquals(changes)
+    }
+
+    @Test
+    fun testModuleInfoChange_impactsPackageMembers() {
+        val packageFacade = PackageFacadeKotlinClassSnapshot(
+            classId = ClassId.topLevel(FqName("apkg.UtilKt")),
+            classAbiHash = 0,
+            classMemberLevelSnapshot = null,
+            packageMemberNames = setOf("aFunction"),
+            typeAliases = null,
+        )
+
+        fun moduleInfo(classAbiHash: Long) = ModuleInfoClassSnapshot(
+            classId = ModuleInfoClassSnapshot.moduleInfoClassId("dep"),
+            classAbiHash = classAbiHash,
+            packages = setOf(FqName("apkg")),
+            transitiveRequires = emptyList(),
+        )
+
+        val changes = ClasspathChangesComputer.computeChangedAndImpactedSet(
+            currentClassSnapshots = listOf(packageFacade, moduleInfo(classAbiHash = 2)),
+            previousClassSnapshots = listOf(packageFacade, moduleInfo(classAbiHash = 1)),
+            ClasspathSnapshotBuildReporter(DoNothingBuildReporter)
+        ).normalize()
+
+        Changes(
+            lookupSymbols = setOf(
+                // Changed
+                LookupSymbol(name = "module-info", scope = "dep"),
+                // Impacted: a package facade is only looked up by its package members
+                LookupSymbol(name = "UtilKt", scope = "apkg"),
+                LookupSymbol(name = "aFunction", scope = "apkg"),
+            ),
+            fqNames = setOf(
+                "dep.module-info",
+                "apkg.UtilKt",
+                "apkg",
             )
         ).assertEquals(changes)
     }

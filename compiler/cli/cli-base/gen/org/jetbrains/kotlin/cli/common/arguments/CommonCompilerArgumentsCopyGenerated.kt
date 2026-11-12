@@ -15,7 +15,6 @@ fun copyCommonCompilerArguments(from: CommonCompilerArguments, to: CommonCompile
     to.allowContractsOnMoreFunctions = from.allowContractsOnMoreFunctions
     to.allowHoldsinContract = from.allowHoldsinContract
     to.allowKotlinPackage = from.allowKotlinPackage
-    to.allowPre17RuntimeJdk = from.allowPre17RuntimeJdk
     to.allowReifiedTypeInCatch = from.allowReifiedTypeInCatch
     to.allowReturnsResultOf = from.allowReturnsResultOf
     to.annotationDefaultTarget = from.annotationDefaultTarget
@@ -109,8 +108,6 @@ fun copyCommonCompilerArguments(from: CommonCompilerArguments, to: CommonCompile
     to.suppressVersionWarnings = from.suppressVersionWarnings
     @Suppress("DEPRECATION")
     to.useFirIC = from.useFirIC
-    @Suppress("DEPRECATION")
-    to.useFirLT = from.useFirLT
     to.verbosePhases = from.verbosePhases.copyOf()
     to.verifyIr = from.verifyIr
     to.warningLevels = from.warningLevels.copyOf()

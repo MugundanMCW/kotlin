@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaNonPublicApi
 import org.jetbrains.kotlin.analysis.api.components.resolveToCall
 import org.jetbrains.kotlin.analysis.api.components.resolveToSymbol
+import org.jetbrains.kotlin.analysis.api.diagnostics.diagnostics
 import org.jetbrains.kotlin.analysis.api.javaInterop.asPsiClass
 import org.jetbrains.kotlin.analysis.api.platform.modification.publishGlobalSourceOutOfBlockModificationEvent
 import org.jetbrains.kotlin.analysis.api.platform.projectStructure.KotlinProjectStructureProvider
@@ -51,6 +52,7 @@ import org.jetbrains.kotlin.platform.js.JsPlatforms
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.findDescendantOfType
+import org.jetbrains.kotlin.test.MockLibraryUtil
 import org.jetbrains.kotlin.test.testFramework.runWriteAction
 import org.jetbrains.kotlin.utils.addToStdlib.requireIsInstance
 import org.junit.jupiter.api.Assertions
@@ -699,6 +701,25 @@ class StandaloneSessionBuilderTest : AbstractStandaloneTest() {
             val javaClass = JavaPsiFacade.getInstance(project).findClass("org.test.JavaClass", GlobalSearchScope.projectScope(project))!!
             val fieldTypes = javaClass.fields.map { (it.type as PsiClassReferenceType).resolve()?.qualifiedName }
             assertEquals(listOf("kotlin.jvm.functions.Function1", "kotlin.collections.AbstractMap", "lib.LibraryClass"), fieldTypes)
+        }
+    }
+
+    /**
+     * KT-91146: Kotlin supertypes of Java classes from binary libraries must be kept, so that subtyping and inherited members work. Before
+     * KT-89902, [JavaPsiFacade] didn't find Kotlin library classes, and a supertype from the package of the Java class was then resolved by
+     * the fallback for unresolved Java types in `FirSignatureEnhancement` as a flexible type, which was dropped from the supertypes.
+     */
+    @Test
+    fun testJvmKotlinSupertypesOfJavaLibraryClasses() {
+        val root = testDataPath("kotlinSupertypesOfJavaLibraryClasses")
+        val libraryJar = MockLibraryUtil.compileJvmLibraryToJar(root.resolve("library").toString(), "library").toPath()
+
+        testLightClasses(JvmPlatforms.defaultJvmPlatform, root.resolve("main"), listOf(libraryJar), withJdk = true) {
+            val ktFile = modulesWithFiles.values.single().single() as KtFile
+            val diagnostics = analyze(ktFile) {
+                ktFile.diagnostics().map { "${it.factoryName}: ${it.defaultMessage}" }.toList()
+            }
+            assertEquals(emptyList(), diagnostics)
         }
     }
 

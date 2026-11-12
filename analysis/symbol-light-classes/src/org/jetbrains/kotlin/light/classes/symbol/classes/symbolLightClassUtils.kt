@@ -48,6 +48,7 @@ import org.jetbrains.kotlin.light.classes.symbol.methods.SymbolLightAccessorMeth
 import org.jetbrains.kotlin.light.classes.symbol.methods.SymbolLightSimpleMethod.Companion.createSimpleMethods
 import org.jetbrains.kotlin.light.classes.symbol.utils.analyzeForLightClasses
 import org.jetbrains.kotlin.light.classes.symbol.utils.copy
+import org.jetbrains.kotlin.light.classes.symbol.utils.isCompanionExtension
 import org.jetbrains.kotlin.light.classes.symbol.utils.isJvmField
 import org.jetbrains.kotlin.light.classes.symbol.utils.mapType
 import org.jetbrains.kotlin.name.ClassId
@@ -467,6 +468,10 @@ internal fun createAndAddField(
     result += field
 }
 
+/**
+ * Creates the light field for the backing field of [declaration], or returns `null` if the property has no backing field or its
+ * backing field is `@JvmSynthetic`, which Java code can't access.
+ */
 internal fun createField(
     lightClass: SymbolLightClassBase,
     declaration: KaPropertySymbol,
@@ -476,9 +481,11 @@ internal fun createField(
     ProgressManager.checkCanceled()
 
     if (declaration.name.isSpecial) return null
-    if (!hasBackingField(declaration)) return null
 
     val backingFieldSymbol = declaration.backingFieldSymbol ?: return null
+    if (backingFieldSymbol.hasJvmSyntheticAnnotation()) return null
+    if (!declaration.hasFieldInClassFile) return null
+
     val fieldName = nameGenerator.generateUniqueFieldName(declaration.name.asString())
     return SymbolLightFieldForProperty(
         propertySymbol = declaration,
@@ -490,34 +497,36 @@ internal fun createField(
     )
 }
 
-private fun hasBackingField(property: KaPropertySymbol): Boolean {
-    // Backing field for KaSyntheticJavaPropertySymbol is always `null`.
-    // Thus, there is no point in proceeding further as `SymbolLightFieldForProperty` expects a non-null backing field pointer.
-    if (property is KaSyntheticJavaPropertySymbol) return false
+/**
+ * Whether this property has a backing field in the class file. A `@JvmSynthetic` backing field counts, although it gets no light
+ * field, see [createField].
+ */
+internal val KaPropertySymbol.hasFieldInClassFile: Boolean
+    get() {
+        // Backing field for KaSyntheticJavaPropertySymbol is always `null`.
+        // Thus, there is no point in proceeding further as `SymbolLightFieldForProperty` expects a non-null backing field pointer.
+        if (this is KaSyntheticJavaPropertySymbol) return false
 
-    requireWithAttachment(
-        property is KaKotlinPropertySymbol,
-        message = { "Expected ${KaKotlinPropertySymbol::class}" },
-        buildAttachment = {
-            withEntry("actualSymbolClassName", property::class.qualifiedName ?: "<null>")
-            withEntry("symbol", property) { it.toString() }
+        requireWithAttachment(
+            this is KaKotlinPropertySymbol,
+            message = { "Expected ${KaKotlinPropertySymbol::class}" },
+            buildAttachment = {
+                withEntry("actualSymbolClassName", this@hasFieldInClassFile::class.qualifiedName ?: "<null>")
+                withEntry("symbol", this@hasFieldInClassFile) { it.toString() }
+            }
+        )
+
+        if (origin.cannotHaveBackingField() || isStatic) return false
+        if (isLateInit || isDelegated || primaryConstructorParameter != null) return true
+        val hasBackingFieldByPsi: Boolean? = psi?.hasBackingField()
+        if (hasBackingFieldByPsi == false) {
+            return hasBackingFieldByPsi
         }
-    )
 
-    if (property.origin.cannotHaveBackingField() || property.isStatic) return false
-    if (property.isLateInit || property.isDelegated || property.primaryConstructorParameter != null) return true
-    val hasBackingFieldByPsi: Boolean? = property.psi?.hasBackingField()
-    if (hasBackingFieldByPsi == false) {
-        return hasBackingFieldByPsi
+        if (isExpect || modality == KaSymbolModality.ABSTRACT) return false
+
+        return hasBackingFieldByPsi ?: hasBackingField
     }
-
-    if (property.isExpect ||
-        property.modality == KaSymbolModality.ABSTRACT ||
-        property.backingFieldSymbol?.hasJvmSyntheticAnnotation() == true
-    ) return false
-
-    return hasBackingFieldByPsi ?: property.hasBackingField
-}
 
 private fun KaSymbolOrigin.cannotHaveBackingField(): Boolean =
     this == KaSymbolOrigin.SOURCE_MEMBER_GENERATED ||
@@ -778,7 +787,7 @@ internal fun hasInlineClassInSignature(
 
 /**
  * Whether the name of the [callableSymbol] is mangled because of an inline class in a parameter position: a value parameter,
- * an extension receiver, or a context parameter.
+ * an extension receiver of a non-companion extension, or a context parameter.
  *
  * @param valueParameterPickMask a bit mask specifying which value parameters of the callable symbol should be picked during the check
  */
@@ -792,14 +801,19 @@ internal fun hasManglingInlineClassInParameterPosition(
     valueParameterPickMask = valueParameterPickMask,
 ) { parameterTypeRequiresMangling(it) }
 
-context(_: KaSession)
+/**
+ * Whether [predicate] holds for the type of a parameter of the JVM method of [callableSymbol]: a context parameter, the extension receiver,
+ * or a value parameter picked by [valueParameterPickMask], unless [skipValueParametersCheck] is `true`. A companion extension has no
+ * receiver parameter on the JVM, see `SymbolLightParameterForReceiver`.
+ */
 private inline fun hasInlineClassInParameterPosition(
     callableSymbol: KaCallableSymbol,
     skipValueParametersCheck: Boolean,
     valueParameterPickMask: BitSet?,
     predicate: (KaType) -> Boolean,
 ): Boolean {
-    if (callableSymbol.receiverType?.let { predicate(it) } == true) return true
+    val receiverType = callableSymbol.receiverType
+    if (receiverType != null && !callableSymbol.isCompanionExtension && predicate(receiverType)) return true
     if (callableSymbol.contextParameters.any { predicate(it.returnType) }) return true
     if (!skipValueParametersCheck && callableSymbol is KaFunctionSymbol) {
         return callableSymbol.valueParameters.withIndex().any { [index, valueParameter] ->
@@ -957,7 +971,6 @@ private fun jvmMethodOwner(symbol: KaCallableSymbol): KaDeclarationSymbol? {
  * For a property accessor, the caller must pass its property as [declaration]: none of the exceptions above recognizes an accessor,
  * so it would always be reported as replaced.
  */
-context(_: KaSession)
 private fun isNonMaterializedInlineClassMember(declaration: KaCallableSymbol, owner: KaDeclarationSymbol?): Boolean {
     fun isOverride(): Boolean = when (declaration) {
         is KaNamedFunctionSymbol -> declaration.isOverride

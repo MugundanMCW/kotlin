@@ -9,6 +9,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.gradle.kotlin.dsl.kotlin
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.gradle.plugin.diagnostics.KotlinToolingDiagnostics
+import org.jetbrains.kotlin.gradle.plugin.diagnostics.KotlinToolingDiagnosticsSeverity.ERROR
+import org.jetbrains.kotlin.gradle.plugin.diagnostics.KotlinToolingDiagnosticsSeverity.FATAL
 import org.jetbrains.kotlin.gradle.plugin.mpp.export.SwiftExportVisibility
 import org.jetbrains.kotlin.gradle.swiftexport.ExperimentalSwiftExportDsl
 import org.jetbrains.kotlin.gradle.testbase.*
@@ -275,6 +277,92 @@ class ExportDslIT : KGPBaseTest() {
         }
     }
 
+    @DisplayName("KT-90135: An override matching no dependency is reported but does not fail the build")
+    @GradleTest
+    fun testUnmatchedOverrideDoesNotFailTheBuild(
+        gradleVersion: GradleVersion,
+        @TempDir testBuildDir: Path,
+    ) {
+        project("empty", gradleVersion) {
+            plugins {
+                kotlin("multiplatform")
+            }
+            buildScriptInjection {
+                project.applyMultiplatform {
+                    iosArm64()
+                    sourceSets.commonMain.get().compileStubSourceWithSourceSetName()
+                }
+                export.swift {
+                    moduleName.set("Shared")
+                    xcodeIntegration {
+                        configure("unknown:qa:1.0", SwiftExportVisibility.HIDDEN)
+                    }
+                }
+            }
+
+            // configure() only selects dependencies, so a selector that matches nothing breaks nothing.
+            build(
+                ":$EMBED_SWIFT_EXPORT_TASK_NAME",
+                environmentVariables = swiftExportEmbedAndSignEnvVariables(testBuildDir)
+            ) {
+                assertTasksExecuted(":iosArm64SwiftExport")
+                assertHasDiagnostic(KotlinToolingDiagnostics.SwiftExportModuleResolutionError, expectedSeverity = ERROR)
+            }
+        }
+    }
+
+    @DisplayName("KT-90135: An override with an invalid module name fails the build with the diagnostic")
+    @GradleTest
+    fun testOverrideWithInvalidModuleNameFailsTheBuild(
+        gradleVersion: GradleVersion,
+        @TempDir testBuildDir: Path,
+    ) {
+        project("empty", gradleVersion) {
+            plugins {
+                kotlin("multiplatform")
+            }
+            buildScriptInjection {
+                project.applyMultiplatform {
+                    iosArm64()
+                    sourceSets.commonMain {
+                        compileStubSourceWithSourceSetName()
+                        dependencies {
+                            api(project(":sub"))
+                        }
+                    }
+                }
+                export.swift {
+                    moduleName.set("Shared")
+                    xcodeIntegration {
+                        configure(project.dependencies.project(mapOf("path" to ":sub"))) {
+                            moduleName.set("not-a-valid-swift-module")
+                        }
+                    }
+                }
+            }
+
+            val subproject = project("empty", gradleVersion) {
+                buildScriptInjection {
+                    project.applyMultiplatform {
+                        iosArm64()
+                        sourceSets.commonMain.get().compileStubSourceWithSourceSetName()
+                    }
+                }
+            }
+
+            include(subproject, "sub")
+
+            buildAndFail(
+                ":$EMBED_SWIFT_EXPORT_TASK_NAME",
+                environmentVariables = swiftExportEmbedAndSignEnvVariables(testBuildDir)
+            ) {
+                assertTasksFailed(":iosArm64SwiftExport")
+                // As an ERROR the task went on and failed later inside the Swift Export worker.
+                assertHasDiagnostic(KotlinToolingDiagnostics.SwiftExportInvalidModuleName, expectedSeverity = FATAL)
+            }
+        }
+    }
+
     @DisplayName("A dependency override renames the module and flattens its package in the generated Swift")
     @GradleTest
     fun testDependencyOverrideIsAppliedEndToEnd(
@@ -335,7 +423,7 @@ class ExportDslIT : KGPBaseTest() {
             ) {
                 assertTasksExecuted(":iosArm64SwiftExport")
 
-                val files = projectPath.resolve("build/SwiftExport/iosArm64/files")
+                val files = projectPath.resolve("build/SwiftExport/iosArm64/output/files")
                 // The derived name for `:sub` would have been `Sub`.
                 assertDirectoryDoesNotExist(files.resolve("Sub"))
                 val renamedSwift = files.resolve("Renamed/Renamed.swift")
@@ -344,7 +432,7 @@ class ExportDslIT : KGPBaseTest() {
                 // Flattening the package exposes `com.example.sub.One` at the top level of the module.
                 assertContains(renamedSwift.readText(), "public typealias One = ExportedKotlinPackages.com.example.sub.One")
 
-                val modules = parseJsonToMap(projectPath.resolve("build/SwiftExport/iosArm64/modules.json"))
+                val modules = parseJsonToMap(projectPath.resolve("build/SwiftExport/iosArm64/output/modules.json"))
                     .getNestedList("modules")
                     .orEmpty()
                     .map { it["name"]?.jsonPrimitive?.content }
@@ -750,7 +838,7 @@ class ExportDslIT : KGPBaseTest() {
             include(mid, "mid")
 
             val swiftApiFiles = {
-                projectPath.resolve("build/SwiftExport/iosArm64/files").toFile().walk()
+                projectPath.resolve("build/SwiftExport/iosArm64/output/files").toFile().walk()
                     .filter { it.extension == "swift" }.map { it.toPath() }.toList()
             }
 

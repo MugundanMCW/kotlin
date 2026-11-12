@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.fir.builder.BodyBuildingMode
 import org.jetbrains.kotlin.fir.builder.PsiRawFirBuilder
 import org.jetbrains.kotlin.fir.builder.buildDestructuringVariable
 import org.jetbrains.kotlin.fir.declarations.*
+import org.jetbrains.kotlin.fir.declarations.utils.isCompanionBlockMember
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.expressions.FirMultiDelegatedConstructorCall
@@ -34,6 +35,19 @@ import org.jetbrains.kotlin.utils.exceptions.errorWithAttachment
 import org.jetbrains.kotlin.utils.exceptions.requireWithAttachment
 import org.jetbrains.kotlin.utils.exceptions.withPsiEntry
 
+/**
+ * Builds the raw FIR of a single non-local declaration, including its body, converting as little of the rest of the file as possible.
+ *
+ * In a file built with [BodyBuildingMode.LAZY_BODIES], bodies, initializers and similar parts are lazy placeholders. To calculate them
+ * for a declaration, [FirLazyBodiesCalculator] converts the declaration again with this builder and moves these parts from the copy to
+ * the original declaration. Because they end up in the original declaration, the builder binds them to it rather than to the copy:
+ * they use the symbol of the original declaration as their container, `return` expressions target the original function or
+ * accessors, and local classes capture the original type parameters.
+ *
+ * Instead of converting the containing declarations, the builder restores the context that the declaration needs from them: the
+ * class names and type parameters come from the path of the [FirDesignation], and the companion block around the declaration from
+ * the original declaration.
+ */
 internal class RawFirNonLocalDeclarationBuilder private constructor(
     session: FirSession,
     baseScopeProvider: FirScopeProvider,
@@ -132,7 +146,7 @@ internal class RawFirNonLocalDeclarationBuilder private constructor(
             requireIsInstance<FirProperty>(originalDeclaration)
 
             val container = originalDeclaration.destructuringDeclarationContainerVariable?.fir
-            requireWithAttachment(container != null, { "Container is not found"}) {
+            requireWithAttachment(container != null, { "Container is not found" }) {
                 withFirEntry("originalDeclaration", originalDeclaration)
                 withPsiEntry("element", element)
             }
@@ -265,44 +279,19 @@ internal class RawFirNonLocalDeclarationBuilder private constructor(
         }
     }
 
+    /**
+     * Restores the context of the containing declarations from the rest of the designation path, and then builds [declarationToBuild].
+     *
+     * A companion block isn't a declaration, so the path doesn't have it. If [originalDeclaration] is a member of a companion block,
+     * the builder enters the block right before building [declarationToBuild], as [PsiRawFirBuilder] does when it builds the file.
+     */
     private fun moveNext(iterator: Iterator<FirDeclaration>, containingDeclaration: FirDeclaration?): FirDeclaration {
         if (!iterator.hasNext()) {
-            val containingClass = containingDeclaration as? FirRegularClass
-            val visitor = VisitorWithReplacement(containingClass)
-            return when (declarationToBuild) {
-                is KtProperty -> {
-                    val ownerSymbol = containingClass?.symbol
-                    visitor.convertProperty(declarationToBuild, ownerSymbol)
-                }
-                is KtConstructor<*> -> {
-                    if (containingClass == null) {
-                        // Constructor outside of class, syntax error, we should not do anything
-                        originalDeclaration
-                    } else {
-                        visitor.convertElement(declarationToBuild, originalDeclaration)
-                    }
-                }
-                is KtClassOrObject -> {
-                    when {
-                        originalDeclaration is FirConstructor -> visitor.processPrimaryConstructor(declarationToBuild, null)
-                        originalDeclaration is FirField -> visitor.processField(declarationToBuild, originalDeclaration)
-                        else -> visitor.convertElement(declarationToBuild, originalDeclaration)
-                    }
-                }
-                is KtDestructuringDeclaration -> visitor.convertDestructuringDeclaration(declarationToBuild, containingDeclaration)
-                is KtDestructuringDeclarationEntry -> visitor.convertDestructuringDeclarationEntry(declarationToBuild)
-                is KtCodeFragment -> {
-                    val firFile = visitor.convertElement(declarationToBuild, originalDeclaration) as FirFile
-                    firFile.codeFragment
-                }
-                is KtAnonymousInitializer -> {
-                    requireWithAttachment(containingDeclaration != null, { "Containing declaration is null" }) {
-                        withPsiEntry("elementToBuild.txt", declarationToBuild)
-                    }
-                    visitor.convertAnonymousInitializer(declarationToBuild, containingDeclaration)
-                }
-                else -> visitor.convertElement(declarationToBuild, originalDeclaration)
-            } as FirDeclaration
+            return if ((originalDeclaration as? FirCallableDeclaration)?.isCompanionBlockMember == true) {
+                context.withCompanionBlock { buildDeclaration(containingDeclaration) }
+            } else {
+                buildDeclaration(containingDeclaration)
+            }
         }
 
         val parent = iterator.next()
@@ -310,7 +299,9 @@ internal class RawFirNonLocalDeclarationBuilder private constructor(
 
         val psi = parent.psi
         val typeParameters = when (psi) {
-            is KtClassOrObject -> parent.typeParameters.subList(0, psi.typeParameters.size)
+            // Own type parameters without the `FirOuterClassTypeParameterRef`s of an inner class.
+            // Unlike the PSI count, this includes the ones synthesized for undeclared constraint names
+            is KtClassOrObject -> parent.typeParameters.filterIsInstance<FirTypeParameter>()
             else -> errorWithFirSpecificEntries(
                 message = "Expected ${KtClassOrObject::class.simpleName} is not found",
                 fir = parent,
@@ -330,6 +321,45 @@ internal class RawFirNonLocalDeclarationBuilder private constructor(
         }
     }
 
+    private fun buildDeclaration(containingDeclaration: FirDeclaration?): FirDeclaration {
+        val containingClass = containingDeclaration as? FirRegularClass
+        val visitor = VisitorWithReplacement(containingClass)
+        return when (declarationToBuild) {
+            is KtProperty -> {
+                val ownerSymbol = containingClass?.symbol
+                visitor.convertProperty(declarationToBuild, ownerSymbol)
+            }
+            is KtConstructor<*> -> {
+                if (containingClass == null) {
+                    // Constructor outside of class, syntax error, we should not do anything
+                    originalDeclaration
+                } else {
+                    visitor.convertElement(declarationToBuild, originalDeclaration)
+                }
+            }
+            is KtClassOrObject -> {
+                when (originalDeclaration) {
+                    is FirConstructor -> visitor.processPrimaryConstructor(declarationToBuild, null)
+                    is FirField -> visitor.processField(declarationToBuild, originalDeclaration)
+                    else -> visitor.convertElement(declarationToBuild, originalDeclaration)
+                }
+            }
+            is KtDestructuringDeclaration -> visitor.convertDestructuringDeclaration(declarationToBuild, containingDeclaration)
+            is KtDestructuringDeclarationEntry -> visitor.convertDestructuringDeclarationEntry(declarationToBuild)
+            is KtCodeFragment -> {
+                val firFile = visitor.convertElement(declarationToBuild, originalDeclaration) as FirFile
+                firFile.codeFragment
+            }
+            is KtAnonymousInitializer -> {
+                requireWithAttachment(containingDeclaration != null, { "Containing declaration is null" }) {
+                    withPsiEntry("elementToBuild.txt", declarationToBuild)
+                }
+                visitor.convertAnonymousInitializer(declarationToBuild, containingDeclaration)
+            }
+            else -> visitor.convertElement(declarationToBuild, originalDeclaration)
+        } as FirDeclaration
+    }
+
     private fun PsiElement.toDelegatedSelfType(firClass: FirRegularClass): FirResolvedTypeRef =
         toDelegatedSelfType(firClass.typeParameters, firClass.symbol)
 
@@ -340,4 +370,3 @@ internal class RawFirNonLocalDeclarationBuilder private constructor(
         val allSuperTypeCallEntries: List<KtSuperTypeCallEntry>,
     )
 }
-

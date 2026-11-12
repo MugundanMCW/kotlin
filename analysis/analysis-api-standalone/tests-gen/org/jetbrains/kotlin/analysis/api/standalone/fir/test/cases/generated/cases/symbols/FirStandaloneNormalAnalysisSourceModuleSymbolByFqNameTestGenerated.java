@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.analysis.test.framework.test.configurators.TestModul
 import org.jetbrains.kotlin.analysis.test.framework.test.configurators.AnalysisSessionMode;
 import org.jetbrains.kotlin.analysis.test.framework.test.configurators.AnalysisApiMode;
 import org.jetbrains.kotlin.analysis.test.framework.services.TargetPlatformEnum;
-import org.jetbrains.kotlin.analysis.api.impl.base.test.cases.symbols.AbstractSymbolByFqNameTest;
+import org.jetbrains.kotlin.analysis.api.fir.test.cases.symbols.AbstractSymbolByFqNameTest;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Test;
 
@@ -83,6 +83,18 @@ public class FirStandaloneNormalAnalysisSourceModuleSymbolByFqNameTestGenerated 
   @TestMetadata("enumEntryWithAnnotationsFromLibrary.kt")
   public void testEnumEntryWithAnnotationsFromLibrary() {
     run("enumEntryWithAnnotationsFromLibrary.kt");
+  }
+
+  @Test
+  @TestMetadata("expectFullValueClassWithNoConstructorFromCommonBinary.kt")
+  public void testExpectFullValueClassWithNoConstructorFromCommonBinary() {
+    run("expectFullValueClassWithNoConstructorFromCommonBinary.kt");
+  }
+
+  @Test
+  @TestMetadata("expectInlineValueClassWithNoConstructorFromCommonBinary.kt")
+  public void testExpectInlineValueClassWithNoConstructorFromCommonBinary() {
+    run("expectInlineValueClassWithNoConstructorFromCommonBinary.kt");
   }
 
   @Test

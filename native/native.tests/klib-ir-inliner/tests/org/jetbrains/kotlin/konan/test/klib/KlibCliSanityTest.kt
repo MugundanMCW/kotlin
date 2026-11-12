@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.konan.test.klib
 
+import com.intellij.openapi.util.text.StringUtil.convertLineSeparators
 import org.jetbrains.kotlin.backend.common.signatureIndex
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.common.arguments.K2NativeCompilerArguments
@@ -442,6 +443,72 @@ class KlibCliSanityTest : AbstractNativeSimpleTest() {
     }
 
     @Test
+    fun `Compiler reports cyclic dependency between KLIBs on 2nd phase`() {
+        val moduleNameToKlibPath: MutableMap</* name of test module */ String, /* original path of KLIB */ String> = linkedMapOf()
+
+        /*
+         * a <-- b <-- c
+         */
+        newSourceModules {
+            addRegularModule("a")
+            addRegularModule("b") { dependsOn("a") }
+            addRegularModule("c") { dependsOn("b") }
+        }.compileToKlibsViaCli { module, successKlib ->
+            moduleNameToKlibPath[module.name] = successKlib.resultingArtifact.klibFile.path
+        }
+        assertEquals(3, moduleNameToKlibPath.size)
+
+        /*
+         * Now adding one more edge between a and c:
+         * +-- a <-- b <-- c <--+
+         * |                    |
+         * +--------------------+
+         */
+        newSourceModules {
+            addRegularModule("a") {
+                sourceFileAddend("fun a2() = c.c(0)\nfun main() = Unit")
+            }
+        }.compileToKlibsViaCli(
+            extraCliArgs = listOf(CLI_PARAM_LIBRARIES, moduleNameToKlibPath.getValue("c"))
+        ) { module, successKlib ->
+            assertEquals("a", module.name)
+            moduleNameToKlibPath["a"] = successKlib.resultingArtifact.klibFile.path
+        }
+        assertEquals(3, moduleNameToKlibPath.size)
+
+        val compilationResult = ExecutableCompilation(
+            settings = testRunSettings,
+            freeCompilerArgs = TestCompilerArgs(
+                buildList {
+                    for (klibPath in moduleNameToKlibPath.values) this += listOf(CLI_PARAM_LIBRARIES, klibPath)
+                    this += K2NativeCompilerArguments::includes.cliArgument(moduleNameToKlibPath.getValue("a"))
+                }
+            ),
+            sourceModules = emptyList(),
+            extras = TestCase.NoTestRunnerExtras(entryPoint = "a.main"),
+            dependencies = emptySet(),
+            expectedArtifact = TestCompilationArtifact.Executable(buildDir.resolve("kexe.kexe")),
+        ).result
+
+        val compilationToolCall = (compilationResult as TestCompilationResult.CompilationToolFailure).loggedData
+        assertEquals(ExitCode.COMPILATION_ERROR, compilationToolCall.exitCode)
+
+        // Note: The cycle is reported starting from the first library in the load order, i.e. in the order of `-library` arguments.
+        // a depends on c, c depends on b, b depends on a.
+        val expectedDiagnostic = """
+            error: cyclic dependency detected while computing DAG of KLIB dependencies:
+            ${moduleNameToKlibPath.getValue("a")} ->
+            ${moduleNameToKlibPath.getValue("c")} ->
+            ${moduleNameToKlibPath.getValue("b")} ->
+            ${moduleNameToKlibPath.getValue("a")}
+        """.trimIndent()
+
+        assertTrue(expectedDiagnostic in convertLineSeparators(compilationToolCall.toolOutput)) {
+            "[$expectedDiagnostic] is not contained in [${compilationToolCall.toolOutput}]"
+        }
+    }
+
+    @Test
     fun `Compiler loads libraries bundled in Kotlin Native distribution`() {
         doTestLoadingBundledLibraries(noStdlib = false, noDefaultLibs = false)
         doTestLoadingBundledLibraries(noStdlib = true, noDefaultLibs = false)
@@ -474,6 +541,49 @@ class KlibCliSanityTest : AbstractNativeSimpleTest() {
             }
         ) { _, successKlib ->
             successKlib.assertNoKlibLoaderIssues()
+        }
+    }
+
+    @Test
+    fun `Compiler does not load platform libraries implicitly when -no-default-libs is passed`() {
+        try {
+            newSourceModules {
+                addRegularModule("a") {
+                    sourceFileAddend(
+                        """
+                            @kotlinx.cinterop.ExperimentalForeignApi
+                            fun callPosix() = platform.posix.fopen("test.txt", "r")
+                        """.trimIndent()
+                    )
+                }
+            }.compileToKlibsViaCli(extraCliArgs = listOf("-no-default-libs"))
+
+            fail { "CompilationToolException is expected" }
+        } catch (cte: CompilationToolException) {
+            if (!cte.reason.contains("error: unresolved reference 'platform'"))
+                throw cte
+        }
+    }
+
+    @Test
+    fun `Compiler fails on missing direct dependency`() {
+        fun compile(passA: Boolean) = newSourceModules {
+            addRegularModule("a") { sourceFileAddend("fun foo() = 42") }
+            addRegularModule("b") {
+                if (passA) dependsOn("a")
+                sourceFileAddend("fun useA() = a.foo()")
+            }
+        }.compileToKlibsViaCli()
+
+        compile(passA = true)
+
+        try {
+            compile(passA = false)
+
+            fail { "CompilationToolException is expected" }
+        } catch (cte: CompilationToolException) {
+            if (!cte.reason.contains("error: unresolved reference 'a'"))
+                throw cte
         }
     }
 

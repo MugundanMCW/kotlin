@@ -10,6 +10,8 @@ import com.intellij.psi.util.ClassUtil
 import com.intellij.psi.util.TypeConversionUtil
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.javaInterop.mapToJvmTypeDescriptor
+import org.jetbrains.kotlin.analysis.api.scopes.KaScope
+import org.jetbrains.kotlin.analysis.api.scopes.declaredMemberScope
 import org.jetbrains.kotlin.analysis.api.scopes.memberScope
 import org.jetbrains.kotlin.analysis.api.symbols.*
 import org.jetbrains.kotlin.analysis.api.types.*
@@ -222,12 +224,15 @@ internal fun processPossiblyMappedCollectionMethod(
  *
  * ## What gets generated
  *
- * For each method from the Java collection interface that isn't already present:
+ * For each method from the Java collection interfaces of the closest mapped supertypes (see [findClosestMappedCollectionSupertypes])
+ * that isn't already present:
  * - Methods that map to Kotlin properties (e.g., `size()` → `size` property): generates both
  *   a final bridge method with the Java name and an abstract/concrete method with the Kotlin name (`getSize`)
  * - Methods not in the Kotlin interface: generates open bridge methods.
  *   Java default methods get them only if the Kotlin interface is read-only and only its mutable counterpart has them
- *   (e.g., `removeIf`)
+ *   (e.g., `removeIf`, or `remove` of `java.util.Iterator`, which `kotlin.collections.MutableIterator` declares)
+ * - Methods in a read-only Kotlin interface that its mutable counterpart redeclares (e.g., `iterator`): generates open bridge methods,
+ *   see [functionNamesDeclaredByMutableCounterpart]
  * - Methods in the Kotlin interface with special signatures: generates appropriate bridge methods with type substitution
  *
  * Generated stubs are added to the result list only if their signatures don't already exist.
@@ -244,7 +249,7 @@ internal fun processPossiblyMappedCollectionMethod(
  * @param containingClass The containing light class
  * @param result Mutable list where generated stub methods are added
  * @param classSymbol The class symbol being processed
- * @param allSupertypes All supertypes of the class, used to find the closest mapped collection type
+ * @param allSupertypes All supertypes of the class, used to find the closest mapped collection types
  *
  * @see generateJavaCollectionMethodStubs
  * @see mapKotlinCollectionClassToJava
@@ -256,29 +261,32 @@ internal fun generateJavaCollectionMethodStubsIfNeeded(
     allSupertypes: List<KaClassType>,
     result: MutableList<PsiMethod>,
 ) {
-    val closestMappedSupertype = findClosestMappedCollectionSupertype(allSupertypes) ?: return
-    if (!isFirstNonInterfaceSubtypeOfCollection(classSymbol)) return
+    val closestMappedSupertypes = findClosestMappedCollectionSupertypes(allSupertypes)
+    if (closestMappedSupertypes.isEmpty() || !isFirstNonInterfaceSubtypeOfCollection(classSymbol)) return
 
-    val javaClassId = mapKotlinCollectionClassToJava(closestMappedSupertype.classId) ?: return
-    val kotlinCollectionSymbol = closestMappedSupertype.symbol as? KaClassSymbol ?: return
-    val javaCollectionSymbol = findClass(javaClassId) ?: return
-    val javaCollectionPsiClass = javaCollectionSymbol.psi as? PsiClass ?: return
-    val substitutor = createPsiSubstitutor(javaCollectionPsiClass, closestMappedSupertype, containingClass)
+    for (closestMappedSupertype in closestMappedSupertypes) {
+        val javaClassId = mapKotlinCollectionClassToJava(closestMappedSupertype.classId) ?: continue
+        val kotlinCollectionSymbol = closestMappedSupertype.symbol as? KaClassSymbol ?: continue
+        val javaCollectionSymbol = findClass(javaClassId) ?: continue
+        val javaCollectionPsiClass = javaCollectionSymbol.psi as? PsiClass ?: continue
+        val substitutor = createPsiSubstitutor(javaCollectionPsiClass, closestMappedSupertype, containingClass)
 
-    generateJavaCollectionMethodStubs(containingClass, javaCollectionPsiClass, javaClassId, kotlinCollectionSymbol, substitutor, result)
+        generateJavaCollectionMethodStubs(containingClass, javaCollectionPsiClass, javaClassId, kotlinCollectionSymbol, substitutor, result)
+    }
 }
 
 /**
- * Chooses the first mapped collection supertype that is not shadowed by a more specific mapped one.
+ * Chooses the mapped collection supertypes that are not shadowed by more specific mapped ones.
  *
- * This avoids stopping at `Collection` when the same class also inherits from ex. `List`, so light classes
- * can generate the richer `List` stub set.
+ * This skips `Collection` when the same class also inherits from, e.g., `List`, so light classes generate only the richer `List` stub set.
+ * Unrelated supertypes, like `Map` and `List` in `abstract class C : Map<String, Int>, List<String>`, are all chosen,
+ * as the JVM backend generates the stubs of each of them (`CollectionStubComputer`).
  */
 context(session: KaSession)
-private fun findClosestMappedCollectionSupertype(allSupertypes: List<KaClassType>): KaClassType? {
+private fun findClosestMappedCollectionSupertypes(allSupertypes: List<KaClassType>): List<KaClassType> {
     val mappedSupertypes = allSupertypes.filter { mapKotlinCollectionClassToJava(it.classId) != null }
 
-    return mappedSupertypes.firstOrNull { candidate ->
+    return mappedSupertypes.filter { candidate ->
         mappedSupertypes.none { other ->
             other !== candidate && other.isSubtypeOf(candidate) && !candidate.isSubtypeOf(other)
         }
@@ -329,25 +337,29 @@ private fun generateJavaCollectionMethodStubs(
     substitutor: PsiSubstitutor,
     result: MutableList<PsiMethod>,
 ) {
-    val kotlinNames = kotlinCollectionSymbol.memberScope.callables
-        .filter { it is KaNamedFunctionSymbol }
-        // skip default methods in Java collection
-        .filter { it.origin != KaSymbolOrigin.JAVA_SOURCE && it.origin != KaSymbolOrigin.JAVA_LIBRARY }
-        .mapNotNull { it.name?.asString() }
-        .toSet()
+    val kotlinNames = kotlinCollectionSymbol.memberScope.kotlinFunctionNames
+    val mutableCounterpartNames = kotlinCollectionSymbol.functionNamesDeclaredByMutableCounterpart
 
     val isReadOnlyCollection = JavaToKotlinClassMap.isReadOnly(kotlinCollectionSymbol.classId)
     val javaMethods = javaCollectionPsiClass.methods.filter { method ->
         when {
             method.hasModifierProperty(PsiModifier.STATIC) -> false
             // The JVM backend generates stubs only for the default methods that read-only Kotlin collections don't have
-            method.hasModifierProperty(PsiModifier.DEFAULT) -> isReadOnlyCollection && method.isMutableOnlyJdkMethod(javaClassId)
+            method.hasModifierProperty(PsiModifier.DEFAULT) ->
+                isReadOnlyCollection && (method.name in mutableCounterpartNames || method.isMutableOnlyJdkMethod(javaClassId))
             else -> true
         }
     }
 
     val candidateMethods = javaMethods.flatMap { method ->
-        createWrappersForJavaCollectionMethod(containingClass, method, javaCollectionPsiClass, kotlinNames, substitutor)
+        createWrappersForJavaCollectionMethod(
+            containingClass,
+            method,
+            javaCollectionPsiClass,
+            kotlinNames,
+            mutableCounterpartNames,
+            substitutor,
+        )
     }
     val existingSignatures = result.mapTo(HashSet()) { it.getSignature(substitutor) }
     result += candidateMethods.filter { candidateMethod ->
@@ -366,11 +378,38 @@ private fun PsiMethod.isMutableOnlyJdkMethod(javaClassId: ClassId): Boolean {
     return SignatureBuildingComponents.signature(javaClassId, jvmDescriptor) in JvmBuiltInsSignatures.MUTABLE_METHOD_SIGNATURES
 }
 
+/**
+ * Names of the functions that the mutable counterpart of this read-only Kotlin collection declares itself rather than inherits,
+ * e.g., `iterator` of `kotlin.collections.MutableCollection`, which overrides `iterator` of `kotlin.collections.Collection`.
+ * Empty if this collection is not read-only.
+ *
+ * The JVM backend generates a throwing stub for each such function that a class implementing the read-only collection doesn't implement,
+ * even if the read-only collection declares the function too, like `iterator` (`CollectionStubComputer`, see KT-36724).
+ */
+context(_: KaSession)
+private val KaClassSymbol.functionNamesDeclaredByMutableCounterpart: Set<String>
+    get() {
+        val mutableClassId = classId?.let { JavaToKotlinClassMap.readOnlyToMutable(it) } ?: return emptySet()
+        val mutableCollectionSymbol = findClass(mutableClassId) ?: return emptySet()
+        return mutableCollectionSymbol.declaredMemberScope.kotlinFunctionNames
+    }
+
+/**
+ * Names of the Kotlin functions in this scope, without the JDK methods that the scope of a mapped collection includes,
+ * like the default method `stream` of `java.util.Collection` in the member scope of `kotlin.collections.Collection`.
+ */
+private val KaScope.kotlinFunctionNames: Set<String>
+    get() = callables
+        .filter { it is KaNamedFunctionSymbol && it.origin != KaSymbolOrigin.JAVA_SOURCE && it.origin != KaSymbolOrigin.JAVA_LIBRARY }
+        .mapNotNull { it.name?.asString() }
+        .toSet()
+
 private fun createWrappersForJavaCollectionMethod(
     containingClass: SymbolLightClassForClassOrObject,
     method: PsiMethod,
     javaCollectionPsiClass: PsiClass,
     kotlinNames: Set<String>,
+    mutableCounterpartNames: Set<String>,
     substitutor: PsiSubstitutor,
 ): List<PsiMethod> {
     val methodName = method.name
@@ -392,12 +431,10 @@ private fun createWrappersForJavaCollectionMethod(
             listOf(finalBridgeForJava, abstractKotlinGetter)
         }
 
-        hasCorrespondingKotlinDeclaration -> {
-            if (isSpecialNotErasedSignature) {
-                createMethodsWithSpecialSignature(containingClass, method, javaCollectionPsiClass, substitutor)
-            } else {
-                emptyList()
-            }
+        hasCorrespondingKotlinDeclaration -> when {
+            isSpecialNotErasedSignature -> createMethodsWithSpecialSignature(containingClass, method, javaCollectionPsiClass, substitutor)
+            methodName in mutableCounterpartNames -> listOf(method.openBridge(containingClass, substitutor))
+            else -> emptyList()
         }
 
         else -> {

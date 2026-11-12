@@ -31,11 +31,9 @@ dependencies {
     implementation(project(":compiler:backend"))
     implementation(project(":compiler:cli-base"))
     implementation(project(":compiler:frontend.common.jvm"))
-    implementation(project(":compiler:frontend.java"))
     implementation(project(":compiler:psi:psi-impl"))
     implementation(project(":js:js.config"))
     implementation(project(":kotlin-util-klib-metadata"))
-    implementation(project(":native:frontend.native"))
     implementation(project(":native:native.config"))
     implementation(project(":wasm:wasm.config"))
     testFixturesApi(project(":analysis:analysis-api-fir"))
@@ -77,6 +75,8 @@ dependencies {
     // We use 'api' instead of 'implementation' because other modules might be using these jars indirectly
     testFixturesApi(project(":plugins:plugin-sandbox"))
     testFixturesApi(testFixtures(project(":plugins:plugin-sandbox")))
+
+    testFixturesImplementation(project(":compiler:frontend"))
 
     testImplementation(testFixtures(project(":compiler:psi:psi-api")))
     testImplementation(libs.lincheck)

@@ -97,14 +97,9 @@ class NodeJsGradlePluginIT : KGPBaseTest() {
 
     @DisplayName("Node.js setup test with downloadBaseUrl = null")
     @GradleTest
-    @TestMetadata("subprojects-nodejs-setup")
+    @TestMetadata("nodejs-setup-with-user-repositories")
     fun testSetupWithoutDownloadBaseUrl(gradleVersion: GradleVersion) {
-        project(
-            "nodejs-setup-with-user-repositories",
-            gradleVersion,
-            // we can remove this line, when the min version of Gradle be at least 8.1
-            dependencyManagement = DependencyManagement.DisabledDependencyManagement
-        ) {
+        project("nodejs-setup-with-user-repositories", gradleVersion) {
             build(":kotlinNodeJsSetup")
         }
     }

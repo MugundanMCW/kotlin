@@ -1,18 +1,23 @@
 @file:OptIn(ExperimentalSerializationApi::class)
 
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.protobuf.ProtoBuf
 import kotlinx.serialization.serializer
-import org.jetbrains.kotlin.buildtools.internal.DaemonExecutionPolicyImpl
-import org.jetbrains.kotlin.buildtools.internal.InProcessExecutionPolicyImpl
+import org.jetbrains.kotlin.buildtools.api.SourcesChanges
+import org.jetbrains.kotlin.buildtools.api.jvm.JvmIncrementalCompilationConfiguration
+import org.jetbrains.kotlin.buildtools.api.trackers.IcEvent
+import org.jetbrains.kotlin.buildtools.internal.*
 import org.jetbrains.kotlin.buildtools.internal.arguments.*
 import org.jetbrains.kotlin.buildtools.internal.arguments.enums.JsModuleKind
 import org.jetbrains.kotlin.buildtools.internal.arguments.enums.JvmDefaultMode
 import org.jetbrains.kotlin.buildtools.internal.arguments.enums.WasmTarget
-import org.jetbrains.kotlin.buildtools.internal.serializability.PathAsStringSerializer
+import org.jetbrains.kotlin.buildtools.internal.jvm.JvmSnapshotBasedIncrementalCompilationConfigurationImpl
+import org.jetbrains.kotlin.buildtools.internal.jvm.operations.JvmCompilationOperationImpl
+import org.jetbrains.kotlin.buildtools.internal.serializability.*
 import org.junit.jupiter.api.DisplayName
+import java.io.File
 import kotlin.io.path.Path
-import kotlin.reflect.KClass
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -24,18 +29,20 @@ import kotlin.test.assertEquals
 class SerializationTest {
 
     interface Serializer {
-        fun <T : Any> serializeAndDeserialize(value: T, clazz: KClass<T>): T
+        fun <T : Any> serializeAndDeserialize(value: T, serializer: KSerializer<T>): T
 
         object Protobuf : Serializer {
-            override fun <T : Any> serializeAndDeserialize(value: T, clazz: KClass<T>): T {
-                val byteArray = ProtoBuf.encodeToByteArray(serializer(clazz.java), value)
+            private val protoBuf = ProtoBuf { serializersModule = btaSerializersModule }
+
+            override fun <T : Any> serializeAndDeserialize(value: T, serializer: KSerializer<T>): T {
+                val byteArray = protoBuf.encodeToByteArray(serializer, value)
                 @Suppress("UNCHECKED_CAST")
-                return ProtoBuf.decodeFromByteArray(serializer(clazz.java), byteArray) as T
+                return protoBuf.decodeFromByteArray(serializer, byteArray)
             }
         }
     }
 
-    inline fun <reified T : Any> Serializer.serializeAndDeserialize(value: T): T = serializeAndDeserialize(value, T::class)
+    inline fun <reified T : Any> Serializer.serializeAndDeserialize(value: T): T = serializeAndDeserialize(value, serializer<T>())
 
     val serializer = Serializer.Protobuf
 
@@ -192,5 +199,123 @@ class SerializationTest {
         withDaemon.jvmArguments = listOf("abc")
         val withDaemon2 = serializer.serializeAndDeserialize<DaemonExecutionPolicyImpl>(withDaemon)
         assertEquals(withDaemon, withDaemon2)
+    }
+
+    @Test
+    @DisplayName("IcEventSerializer serializes IcEvent correctly")
+    fun icEventsSerialization() {
+        val startedEvent: IcEvent = CompilationStartedEvent(
+            isIncremental = true,
+            reason = "Some change",
+            type = "CompilationStarted",
+            timestamp = 123456789L,
+            iteration = 2,
+        )
+        assertEquals(startedEvent, serializer.serializeAndDeserialize(startedEvent, IcEventSerializer))
+
+        val compileIterationEvent: IcEvent = CompileIterationEvent(
+            reasons = mapOf(
+                "/path/to/File.kt" to listOf(FileCompilationReasonBasic("Reason 1"), FileCompilationReasonBasic("Reason 2")),
+                "/path/to/Other.kt" to listOf(FileCompilationReasonBasic("Reason 3")),
+            ),
+            exitCode = "OK",
+            type = "CompileIteration",
+            timestamp = 987654321L,
+            iteration = 2,
+        )
+        assertEquals(compileIterationEvent, serializer.serializeAndDeserialize(compileIterationEvent, IcEventSerializer))
+
+        val customStarted: IcEvent.CompilationStarted = object : IcEvent.CompilationStarted {
+            override val isIncremental = false
+            override val reason = "Rebuild"
+            override val type = "CompilationStarted"
+            override val timestamp = 11111L
+            override val iteration = 0
+        }
+        val deserializedCustom = serializer.serializeAndDeserialize(customStarted, IcEventSerializer) as CompilationStartedEvent
+        assertEquals(customStarted.iteration, deserializedCustom.iteration)
+        assertEquals(customStarted.timestamp, deserializedCustom.timestamp)
+        assertEquals(customStarted.type, deserializedCustom.type)
+        assertEquals(customStarted.isIncremental, deserializedCustom.isIncremental)
+        assertEquals(customStarted.reason, deserializedCustom.reason)
+    }
+
+    @Test
+    @DisplayName("Message.IcEventCollector.CollectEvents serialization")
+    fun collectEventsMessageSerialization() {
+        val startedEvent = CompilationStartedEvent(
+            isIncremental = true,
+            reason = "Some change",
+            type = "CompilationStarted",
+            timestamp = 123456789L,
+            iteration = 2,
+        )
+        val compileIterationEvent = CompileIterationEvent(
+            reasons = mapOf(
+                "/path/to/File.kt" to listOf(FileCompilationReasonBasic("Reason 1"), FileCompilationReasonBasic("Reason 2")),
+                "/path/to/Other.kt" to listOf(FileCompilationReasonBasic("Reason 3")),
+            ),
+            exitCode = "OK",
+            type = "CompileIteration",
+            timestamp = 987654321L,
+            iteration = 2,
+        )
+        val message = Message.IcEventCollector.CollectEvents(listOf(startedEvent, compileIterationEvent))
+
+        val deserialized = serializer.serializeAndDeserialize(message)
+        assertEquals(message, deserialized)
+
+        val deserializedAsMessage = serializer.serializeAndDeserialize<Message>(message)
+        assertEquals(message, deserializedAsMessage)
+
+        val emptyMessage = Message.IcEventCollector.CollectEvents(emptyList())
+        val deserializedEmpty = serializer.serializeAndDeserialize<Message>(emptyMessage)
+        assertEquals(emptyMessage, deserializedEmpty)
+    }
+
+    @Test
+    @DisplayName("JVM build operations are serialized correctly")
+    fun jvmOperationsSerialization() {
+        val jvmCompilation = JvmCompilationOperationImpl(
+            listOf(Path("/src/Main.kt")),
+            Path("/out/classes"),
+            JvmCompilerArgumentsImpl().apply { jdkHome = Path("/jdk") },
+            "2.2.0"
+        )
+        val deserializedJvmComp = serializer.serializeAndDeserialize(jvmCompilation)
+        assertEquals(jvmCompilation.sources, deserializedJvmComp.sources)
+        assertEquals(jvmCompilation.destinationDirectory, deserializedJvmComp.destinationDirectory)
+        assertEquals(jvmCompilation.compilerArguments.jdkHome, deserializedJvmComp.compilerArguments.jdkHome)
+    }
+
+    @Test
+    @Suppress("DEPRECATION", "DEPRECATION_ERROR")
+    @DisplayName("Incremental compilation configurations are serialized correctly")
+    fun incrementalCompilationConfigurationsSerialization() {
+        val jvmSnapshotIc = JvmSnapshotBasedIncrementalCompilationConfigurationImpl(
+            Path("/working/dir"),
+            SourcesChanges.Known(listOf(File("/src/A.kt")), emptyList()),
+            listOf(Path("/dep/snapshot.bin")),
+            Path("/shrunk/snapshot.bin")
+        ).apply {
+            preciseJavaTracking = true
+            assuredNoClasspathSnapshotChanges = true
+            useFirRunner = true
+            rootProjectDir = Path("/root")
+            moduleBuildDir = Path("/build")
+        }
+        val deserializedJvmSnapshotIc = serializer.serializeAndDeserialize<JvmIncrementalCompilationConfiguration>(
+            jvmSnapshotIc
+        ) as JvmSnapshotBasedIncrementalCompilationConfigurationImpl
+        val deserializedJvmSources = deserializedJvmSnapshotIc.sourcesChanges as SourcesChanges.Known
+        assertEquals(jvmSnapshotIc.workingDirectory, deserializedJvmSnapshotIc.workingDirectory)
+        assertEquals(listOf(File("/src/A.kt")), deserializedJvmSources.modifiedFiles)
+        assertEquals(jvmSnapshotIc.dependenciesSnapshotFiles, deserializedJvmSnapshotIc.dependenciesSnapshotFiles)
+        assertEquals(jvmSnapshotIc.shrunkClasspathSnapshot, deserializedJvmSnapshotIc.shrunkClasspathSnapshot)
+        assertEquals(jvmSnapshotIc.preciseJavaTracking, deserializedJvmSnapshotIc.preciseJavaTracking)
+        assertEquals(jvmSnapshotIc.assuredNoClasspathSnapshotChanges, deserializedJvmSnapshotIc.assuredNoClasspathSnapshotChanges)
+        assertEquals(jvmSnapshotIc.useFirRunner, deserializedJvmSnapshotIc.useFirRunner)
+        assertEquals(jvmSnapshotIc.rootProjectDir, deserializedJvmSnapshotIc.rootProjectDir)
+        assertEquals(jvmSnapshotIc.moduleBuildDir, deserializedJvmSnapshotIc.moduleBuildDir)
     }
 }

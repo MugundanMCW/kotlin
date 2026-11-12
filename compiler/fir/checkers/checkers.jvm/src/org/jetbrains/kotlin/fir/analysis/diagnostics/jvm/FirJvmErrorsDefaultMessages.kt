@@ -71,8 +71,6 @@ import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.JVM_EXPOSE
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.JVM_EXPOSE_BOXED_CAN_BE_REPLACED_WITH_JVM_NAME
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.JVM_EXPOSE_BOXED_NAME_IS_NOT_JAVA_IDENTIFIER
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.JVM_EXPOSE_BOXED_REQUIRES_NAME
-import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.JVM_INLINE_ON_VALUE_OBJECT
-import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.JVM_INLINE_WITHOUT_VALUE_CLASS
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.JVM_PACKAGE_NAME_CANNOT_BE_EMPTY
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.JVM_PACKAGE_NAME_MUST_BE_VALID_NAME
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.JVM_PACKAGE_NAME_NOT_SUPPORTED_IN_FILES_WITH_CLASSES
@@ -141,7 +139,6 @@ import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.UPPER_BOUN
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.UPPER_BOUND_VIOLATED_IN_TYPEALIAS_EXPANSION_BASED_ON_JAVA_ANNOTATIONS
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.USELESS_JVM_EXPOSE_BOXED
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.VALUE_CLASS_EXTENDS_VALUE_CLASS_COMPILED_AS_IDENTITY_CLASS
-import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.VALUE_CLASS_WITHOUT_JVM_INLINE_ANNOTATION
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.WHEN_SUBJECT_CAN_BE_NULL_IN_JAVA
 import org.jetbrains.kotlin.fir.analysis.diagnostics.jvm.FirJvmErrors.WRONG_TYPE_FOR_JAVA_OVERRIDE
 
@@ -221,7 +218,7 @@ object FirJvmErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
 
         map.put(
             ACCIDENTAL_OVERRIDE_CLASH_BY_JVM_SIGNATURE,
-            "This function accidentally overrides both {0} and {1} {2} from JVM point of view because of mixed Java/Kotlin hierarchy.\n" +
+            "This function overrides both {0} and {1} {2} because of mixed Java/Kotlin hierarchy.\n" +
                     "This situation provokes a JVM clash and is forbidden. To fix it, delete either this or one of the overridden functions.",
             SYMBOL_WITH_CONTAINING_DECLARATION,
             STRING,
@@ -340,7 +337,7 @@ object FirJvmErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         )
         map.put(
             JAVA_MODULE_DOES_NOT_READ_UNNAMED_MODULE,
-            "Symbol is declared in an unnamed module which is not read by current module."
+            "Symbol is declared in an unnamed module which is not read by the current module."
         )
         map.put(
             JAVA_MODULE_DOES_NOT_EXPORT_PACKAGE,
@@ -374,10 +371,6 @@ object FirJvmErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
 
         map.put(FUNCTION_DELEGATE_MEMBER_NAME_CLASH, "Spread operator is prohibited for arguments to signature-polymorphic calls.")
 
-        map.put(VALUE_CLASS_WITHOUT_JVM_INLINE_ANNOTATION, "Value classes without '@JvmInline' annotation are not yet supported.")
-        map.put(JVM_INLINE_WITHOUT_VALUE_CLASS, "'@JvmInline' annotation is applicable only to value classes.")
-        map.put(JVM_INLINE_ON_VALUE_OBJECT, "'@JvmInline' annotation is not applicable to value objects.")
-
         map.put(INAPPLICABLE_JVM_EXPOSE_BOXED_WITH_NAME, "'@JvmExposeBoxed' with name is applicable only to functions, getters and setters.")
         map.put(
             USELESS_JVM_EXPOSE_BOXED,
@@ -401,7 +394,7 @@ object FirJvmErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         )
         map.put(
             JVM_EXPOSE_BOXED_CANNOT_EXPOSE_OPEN_ABSTRACT,
-            "'@JvmExposeBoxed' cannot expose functions which are open or abstract, or member of an interface."
+            "'@JvmExposeBoxed' cannot expose functions which are open, abstract, or members of an interface."
         )
         map.put(
             JVM_EXPOSE_BOXED_CANNOT_EXPOSE_SYNTHETIC,
@@ -506,7 +499,7 @@ object FirJvmErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         )
         map.put(
             REPEATABLE_ANNOTATION_HAS_NESTED_CLASS_NAMED_CONTAINER_ERROR,
-            "Repeatable annotation cannot have a nested class named 'Container'. This name is reserved for auto-generated container class."
+            "Repeatable annotation cannot have a nested class named 'Container'. This name is reserved for the auto-generated container class."
         )
         map.put(
             SUSPENSION_POINT_INSIDE_CRITICAL_SECTION,
@@ -567,7 +560,7 @@ object FirJvmErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
         )
         map.put(
             NO_REFLECTION_IN_CLASS_PATH,
-            "Call uses reflection API which is not found in compilation classpath. " +
+            "Call uses reflection API which is not found in the compilation classpath. " +
                     "Make sure you have kotlin-reflect.jar in the classpath."
         )
 
@@ -582,9 +575,9 @@ object FirJvmErrorsDefaultMessages : BaseDiagnosticRendererFactory() {
 
         map.put(
             JAVA_FIELD_SHADOWED_BY_KOTLIN_PROPERTY,
-            "This variable access is resolved to Java field, but it is clashed with Kotlin property ''{0}'' with backing field " +
-                    "which leads to the incorrect bytecode generation and failure at runtime. So such calls are prohibited until " +
-                    "corresponding bug will be fixed. See https://youtrack.jetbrains.com/issue/KT-56386 for more details.",
+            "This variable access resolves to a Java field, but it clashes with the Kotlin property with backing field ''{0}'' " +
+                    "which leads to incorrect bytecode generation and failures at runtime. " +
+                    "Until the corresponding bug is fixed, such calls are prohibited. See https://youtrack.jetbrains.com/issue/KT-56386 for more details.",
             SYMBOL
         )
 

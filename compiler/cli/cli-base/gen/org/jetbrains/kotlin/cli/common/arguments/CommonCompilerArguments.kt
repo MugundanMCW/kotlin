@@ -151,16 +151,6 @@ This flag partially enables functionality of `-Xexplicit-api` flag, so please do
         }
 
     @Argument(
-        value = "-Xallow-pre-17-runtime-jdk",
-        description = "Temporarily allow running Kotlin compiler with JDK older than JDK 17. This option will not work starting Kotlin 2.5.20-Beta1. See https://jb.gg/kotlin-compiler-jdk-17-migration for more details.",
-    )
-    var allowPre17RuntimeJdk: Boolean = false
-        set(value) {
-            checkFrozen()
-            field = value
-        }
-
-    @Argument(
         value = "-Xallow-reified-type-in-catch",
         description = "Allow 'catch' parameters to have reified types.",
     )
@@ -1017,18 +1007,6 @@ with bodies.""",
         deprecatedVersion = "2.5.0",
     )
     var useFirIC: Boolean = false
-        set(value) {
-            checkFrozen()
-            field = value
-        }
-
-    @all:Deprecated("The light tree mode is enabled by default, and it will become the only available mode in one of the future releases.")
-    @Argument(
-        value = "-Xuse-fir-lt",
-        description = "Compile using the LightTree parser with the frontend IR.",
-        deprecatedVersion = "2.4.20",
-    )
-    var useFirLT: Boolean = true
         set(value) {
             checkFrozen()
             field = value

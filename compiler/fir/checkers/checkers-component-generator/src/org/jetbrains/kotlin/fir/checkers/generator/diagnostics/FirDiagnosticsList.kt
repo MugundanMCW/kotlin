@@ -838,6 +838,16 @@ object DIAGNOSTICS_LIST : DiagnosticList("FirErrors") {
         val WILL_BECOME_VALUE_CLASS_CANNOT_BE_RECURSIVE by error<KtElement>()
         val WILL_BECOME_VALUE_CLASS_CANNOT_BE_RECURSIVE_VIA_TYPE_PARAMETERS by error<KtElement>()
         val WILL_BECOME_VALUE_CLASS_CANNOT_BE_CLONEABLE by error<KtDeclaration>(PositioningStrategy.INLINE_OR_VALUE_MODIFIER)
+
+        val VALUE_CLASS_WITHOUT_JVM_INLINE_ANNOTATION by error<KtDeclaration>(PositioningStrategy.VALUE_MODIFIER)
+        val INLINE_VALUE_CLASS_WITHOUT_EXPLICIT_INLINE by deprecationError<KtDeclaration>(
+            ExplicitInlineValueClassesSyntaxRequiredOnAllPlatforms,
+            PositioningStrategy.VALUE_MODIFIER,
+        )
+        val JVM_INLINE_WITHOUT_VALUE_CLASS by error<PsiElement>()
+        val JVM_INLINE_WITHOUT_VALUE_CLASS_WARNING by warning<PsiElement>()
+        val REDUNDANT_JVM_INLINE by warning<PsiElement>()
+        val JVM_INLINE_ON_VALUE_OBJECT by error<PsiElement>()
     }
 
     val APPLICABILITY by object : DiagnosticGroup("Applicability") {
@@ -2371,6 +2381,10 @@ object DIAGNOSTICS_LIST : DiagnosticList("FirErrors") {
             parameter<String>("replacement")
         }
 
+        val INLINE_CLASS_DEPRECATED_ERROR by error<KtElement>(PositioningStrategy.INLINE_OR_VALUE_MODIFIER) {
+            parameter<String>("replacement")
+        }
+
         val LESS_VISIBLE_TYPE_ACCESS_IN_INLINE by deprecationError<KtElement>(
             LanguageFeature.ForbidExposingLessVisibleTypesInInline,
             PositioningStrategy.REFERENCE_BY_QUALIFIED
@@ -2559,6 +2573,8 @@ object DIAGNOSTICS_LIST : DiagnosticList("FirErrors") {
         val NON_ERROR_SUPERTYPE by error<PsiElement>()
         val NON_ERROR_GET_CLASS_CALL by error<PsiElement>()
         val ACTUAL_TYPEALIAS_TO_NON_ERROR by error<PsiElement>()
+        val NON_FINAL_RICH_ERROR_CLASS by error<PsiElement>(MODALITY_MODIFIER)
+        val ACTUAL_TYPEALIAS_WITH_EXPECT_RICH_ERROR by error<PsiElement>()
     }
 }
 

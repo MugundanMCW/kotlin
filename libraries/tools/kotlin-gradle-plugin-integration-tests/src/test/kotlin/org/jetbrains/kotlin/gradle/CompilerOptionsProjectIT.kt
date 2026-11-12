@@ -5,12 +5,12 @@
 
 package org.jetbrains.kotlin.gradle
 
-import org.gradle.api.logging.LogLevel
 import org.gradle.kotlin.dsl.withType
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.gradle.dsl.kotlinAndroidExtensionOrNull
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.gradle.testbase.*
+import org.jetbrains.kotlin.test.TestMetadata
 import org.jetbrains.kotlin.testFederation.MustRunOnChangesInGradle
 import org.junit.jupiter.api.DisplayName
 import kotlin.io.path.appendText
@@ -24,6 +24,7 @@ import kotlin.io.path.appendText
 @MustRunOnChangesInGradle
 class CompilerOptionsProjectIT : KGPBaseTest() {
 
+    @TestMetadata("AndroidSimpleApp")
     @DisplayName("Project level DSL is available in android project")
     @AndroidGradlePluginTests
     @GradleAndroidTest
@@ -59,13 +60,13 @@ class CompilerOptionsProjectIT : KGPBaseTest() {
                 )
                 assertCompilerArguments(
                     ":compileDebugKotlin",
-                    "-java-parameters", "-module-name my_app_debug",
-                    logLevel = LogLevel.INFO
+                    "-java-parameters", "-module-name my_app_debug"
                 )
             }
         }
     }
 
+    @TestMetadata("AndroidSimpleApp")
     @DisplayName("Android target compiler options override project level compiler options")
     @AndroidGradlePluginTests
     @GradleAndroidTest
@@ -109,13 +110,13 @@ class CompilerOptionsProjectIT : KGPBaseTest() {
                 assertCompilerArguments(
                     ":compileDebugKotlin",
                     "-java-parameters",
-                    "-module-name my_app_debug",
-                    logLevel = LogLevel.INFO
+                    "-module-name my_app_debug"
                 )
             }
         }
     }
 
+    @TestMetadata("AndroidIncrementalMultiModule")
     @DisplayName("KT-59056: freeCompilerArgs are combined with android.kotlinOptions.freeCompilerArgs")
     @AndroidGradlePluginTests
     @GradleAndroidTest
@@ -146,18 +147,17 @@ class CompilerOptionsProjectIT : KGPBaseTest() {
 
                 assertCompilerArgument(
                     ":libAndroid:compileDebugKotlin",
-                    "-progressive",
-                    logLevel = LogLevel.INFO
+                    "-progressive"
                 )
                 assertCompilerArgument(
                     ":libAndroid:compileDebugKotlin",
-                    "-opt-in=com.example.roo.requiresOpt.FunTests",
-                    logLevel = LogLevel.INFO
+                    "-opt-in=com.example.roo.requiresOpt.FunTests"
                 )
             }
         }
     }
 
+    @TestMetadata("multiplatformAndroidSourceSetLayout2")
     @DisplayName("KT-57959: should be possible to configure module name in MPP/android")
     @GradleAndroidTest
     @AndroidGradlePluginTests
@@ -192,13 +192,13 @@ class CompilerOptionsProjectIT : KGPBaseTest() {
 
                 assertCompilerArgument(
                     ":compileGermanFreeDebugKotlinAndroid",
-                    "-module-name last-chance",
-                    logLevel = LogLevel.INFO
+                    "-module-name last-chance"
                 )
             }
         }
     }
 
+    @TestMetadata("multiplatformAndroidSourceSetLayout2")
     @DisplayName("KT-61303: Multiplatform/Android module name is changed")
     @AndroidGradlePluginTests
     @GradleAndroidTest
@@ -232,8 +232,7 @@ class CompilerOptionsProjectIT : KGPBaseTest() {
             build(":compileGermanFreeDebugKotlinAndroid") {
                 assertCompilerArguments(
                     ":compileGermanFreeDebugKotlinAndroid",
-                    "-module-name my-custom-module_germanFreeDebug",
-                    logLevel = LogLevel.INFO
+                    "-module-name my-custom-module_germanFreeDebug"
                 )
             }
         }

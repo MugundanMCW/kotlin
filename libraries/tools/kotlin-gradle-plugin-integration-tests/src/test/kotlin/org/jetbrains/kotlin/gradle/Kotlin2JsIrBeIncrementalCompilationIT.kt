@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.gradle
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.gradle.testbase.*
 import org.jetbrains.kotlin.gradle.uklibs.applyMultiplatform
+import org.jetbrains.kotlin.test.TestMetadata
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.condition.OS
 import java.io.File
@@ -20,6 +21,7 @@ import kotlin.test.assertTrue
 
 @DisplayName("Incremental compilation tests for Kotlin JS IR backend")
 @JsGradlePluginTests
+@MustRunOnChangesInJsIrCompiler
 class Kotlin2JsIrBeIncrementalCompilationIT : KGPBaseTest() {
     override val defaultBuildOptions = BuildOptions(
         jsOptions = BuildOptions.JsOptions(
@@ -28,6 +30,7 @@ class Kotlin2JsIrBeIncrementalCompilationIT : KGPBaseTest() {
         ),
     ).disableIsolatedProjectsBecauseOfJsAndWasmKT75899()
 
+    @TestMetadata("kotlin2JsIrICProject")
     @DisplayName("Test cache invalidation after modifying compiler args")
     @GradleTest
     fun testCacheInvalidationAfterCompilerArgModifying(gradleVersion: GradleVersion) {
@@ -73,6 +76,7 @@ class Kotlin2JsIrBeIncrementalCompilationIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("kotlin-js-ir-ic-multiple-artifacts")
     @DisplayName("Test multiple artifacts in one project")
     @GradleTest
     fun testMultipleArtifacts(gradleVersion: GradleVersion) {
@@ -132,6 +136,7 @@ class Kotlin2JsIrBeIncrementalCompilationIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("kotlin-js-ir-ic-remove-unused-dep")
     @DisplayName("KT-50503: Test removing unused dependency from klib")
     @GradleTest
     fun testRemoveUnusedDependency(gradleVersion: GradleVersion) {
@@ -165,6 +170,7 @@ class Kotlin2JsIrBeIncrementalCompilationIT : KGPBaseTest() {
     }
 
 
+    @TestMetadata("kotlin2JsIrICProject")
     @DisplayName("Test cache invalidation after detecting guard file")
     @GradleTest
     fun testCacheGuardInvalidation(gradleVersion: GradleVersion) {
@@ -193,6 +199,7 @@ class Kotlin2JsIrBeIncrementalCompilationIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("kotlin-js-ir-ic-multiple-artifacts")
     @DisplayName("Separate caches for different binaries")
     @GradleTest
     fun testSeparateCachesForDifferentBinaries(gradleVersion: GradleVersion) {

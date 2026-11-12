@@ -34,6 +34,11 @@ sealed interface DomainInfo {
      */
     val mustRunAllTestsOnChangesIn: List<DomainInfo>
 
+    /**
+     * @see DeclaredDomain.team
+     */
+    val team: String
+
     companion object
 }
 
@@ -53,7 +58,7 @@ data class RepositoryPath(val root: Path, val value: Path) {
     }
 
     init {
-        require(!value.isAbsolute) { "Path must not be absolute" }
+        require(!value.isAbsolute) { "Path must not be absolute, got $value" }
     }
 }
 

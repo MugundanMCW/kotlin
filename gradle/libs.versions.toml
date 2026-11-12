@@ -29,9 +29,9 @@ kotlinx-benchmark = "0.5.0"
 gson = "2.11.0"
 icu4j = "78.3"
 jetbrains-ideaExt = "1.4.1"
-jackson = "2.21.8"
+jackson = "2.22.4"
 jgit = "7.3.0.202506031305-r"
-jsoup = "1.17.2"
+jsoup = "1.23.2"
 jetbrains-markdown = "0.7.3"
 junit4 = "4.13.2"
 junit5 = "5.14.4"
@@ -47,14 +47,14 @@ xerces = "2.12.2"
 caffeine = "2.9.3" # We cannot use the latest version of Caffeine (`3.x`) because it doesn't support Java 8.
 compose-stable = "1.7.0-alpha08" # Used for Compose compiler plugin tests
 androidx-collections = "1.5.0" # Used for Compose compiler plugin tests
-ant = "1.10.14"
+ant = "1.10.18"
 # It is recommended to skip at least one major release, e.g., use 2.0.21 when the default bootstrap version is 2.2.
 # This ensures additional verification that Gradle-related code does not get dependencies of higher LV
 kotlin-for-gradle-plugins-compilation = "2.4.20"
 intellij-asm = "9.6.1"
 intellij-kotlinx-coroutines = "1.10.2-intellij-1" # Should be synchronized with 'kotlinx-coroutines'
 diff-utils = "4.12"
-opentelemetry-api = "1.62.0"
+opentelemetry-api = "1.67.0"
 auto-value-annotations = "1.11.0" # Used in opentelemetry-api
 fastutil = "8.5.14-jb1"
 rwmutex-idea = "0.0.10"
@@ -78,7 +78,7 @@ commons-compress = "1.27.1"
 commons-io = "2.18.0"
 commons-lang = "3.18.0"
 commons-text = "1.10.0"
-dataframe-dev = "1.0.0-dev-10669"
+dataframe-dev = "1.0.0-dev-11962"
 org-jetbrains-syntax-api = "0.3.376"
 org-jetbrains-annotations = "26.0.2"
 schema-kenerator = "2.6.0"
@@ -90,7 +90,7 @@ log4j-over-slf4j = "1.7.36" # Use this version instead of the latest one to prev
 commons-logging = "1.3.5" # Use this version instead of the latest one to prevent dependency pollution (1.3.5 is already included by some library). Feel free to update if necessary.
 flogger = "0.9"
 jboss-logging = "3.4.3.Final"
-log4j2 = "2.26.0"
+log4j2 = "2.26.1"
 maven-xml-impl = "4.0.0-beta-5"
 yarn = "1.22.22"
 # This is also the version of bouncycastle that is used by KGP
@@ -231,6 +231,7 @@ flogger-system-backend = { module = "com.google.flogger:flogger-system-backend",
 jboss-logging = { module = "org.jboss.logging:jboss-logging", version.ref = "jboss-logging" }
 log4j2-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j2" }
 log4j2-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j2" }
+log4j2-slf4j-impl = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j2" }
 maven-xml-impl = { module = "org.apache.maven:maven-xml-impl", version.ref = "maven-xml-impl" }
 
 bouncycastle-bcpg-jdk18on = { module = "org.bouncycastle:bcpg-jdk18on", version.ref = "bouncycastle" }

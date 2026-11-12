@@ -13,12 +13,15 @@ import org.jetbrains.kotlin.gradle.abi.utils.referenceJvmDumpFile
 import org.jetbrains.kotlin.gradle.abi.utils.referenceKlibDumpFile
 import org.jetbrains.kotlin.gradle.dsl.abi.BinariesSource
 import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation
+import org.jetbrains.kotlin.gradle.plugin.diagnostics.KotlinToolingDiagnostics
 import org.jetbrains.kotlin.gradle.testbase.*
+import org.jetbrains.kotlin.test.TestMetadata
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 @MppGradlePluginTests
 class AbiValidationKmpMavenPublicationsIT : KGPBaseTest() {
+    @TestMetadata("base-kotlin-multiplatform-library")
     @GradleTest
     fun testNoPublishPluginInKmp(
         gradleVersion: GradleVersion,
@@ -36,10 +39,13 @@ class AbiValidationKmpMavenPublicationsIT : KGPBaseTest() {
             abiValidation {
                 binariesSource.set(BinariesSource.MAVEN_PUBLICATIONS)
             }
-            buildAndFail("updateKotlinAbi")
+            build("updateKotlinAbi") {
+                assertHasDiagnostic(KotlinToolingDiagnostics.AbiValidationNoPublishPlugin)
+            }
         }
     }
 
+    @TestMetadata("base-kotlin-multiplatform-library")
     @GradleTest
     fun testSame(
         gradleVersion: GradleVersion,
@@ -99,6 +105,7 @@ class AbiValidationKmpMavenPublicationsIT : KGPBaseTest() {
         assertEquals(compilationsJvmDump, jvmDumpFromPublication)
     }
 
+    @TestMetadata("base-kotlin-multiplatform-android-library")
     @GradleAndroidTest
     fun testAndroidNotSupported(
         gradleVersion: GradleVersion,

@@ -25,8 +25,10 @@ import org.jetbrains.kotlin.gradle.testbase.*
 import org.jetbrains.kotlin.gradle.testing.*
 import org.jetbrains.kotlin.gradle.testing.PrettyPrint
 import org.jetbrains.kotlin.gradle.testing.ResolvedComponentWithArtifacts
+import org.jetbrains.kotlin.gradle.util.computeTransformedLibraryVersionChecksum
 import org.jetbrains.kotlin.gradle.util.resolveIdeDependencies
 import org.jetbrains.kotlin.gradle.utils.named
+import org.jetbrains.kotlin.testFederation.MustRunOnChangesInGradle
 import org.junit.jupiter.api.DisplayName
 import java.io.File
 import java.io.Serializable
@@ -39,6 +41,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalWasmDsl::class)
 @MppGradlePluginTests
 @DisplayName("Smoke test uklib consumption")
+@MustRunOnChangesInGradle
 class UklibConsumptionIT : KGPBaseTest() {
 
     @GradleAndroidTest
@@ -399,6 +402,7 @@ class UklibConsumptionIT : KGPBaseTest() {
             addPublishedProjectToRepositories(transitive)
             buildScriptInjection {
                 project.computeTransformedLibraryChecksum(false)
+                project.computeTransformedLibraryVersionChecksum(enable = false)
                 project.setUklibResolutionStrategy()
                 project.applyMultiplatform {
                     linuxArm64()
@@ -792,6 +796,7 @@ class UklibConsumptionIT : KGPBaseTest() {
             addPublishedProjectToRepositories(direct)
             buildScriptInjection {
                 project.computeTransformedLibraryChecksum()
+                project.computeTransformedLibraryVersionChecksum(enable = false)
                 project.setUklibResolutionStrategy()
                 project.applyMultiplatform {
                     targetSetup()

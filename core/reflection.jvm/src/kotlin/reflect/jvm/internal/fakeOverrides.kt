@@ -7,6 +7,7 @@ package kotlin.reflect.jvm.internal
 
 import org.jetbrains.kotlin.descriptors.runtime.structure.safeClassLoader
 import java.lang.reflect.Method
+import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.TypeVariable
 import kotlin.LazyThreadSafetyMode.PUBLICATION
@@ -44,13 +45,13 @@ private object CovariantOverrideComparator : Comparator<ReflectKCallable<*>> {
 internal typealias MembersJavaSignatureMap = Map<EquatableCallableSignature<EqualityMode.JavaSignature>, ReflectKCallable<*>>
 private typealias MutableMembersJavaSignatureMap = MutableMap<EquatableCallableSignature<EqualityMode.JavaSignature>, ReflectKCallable<*>>
 
-private fun ReflectKCallable<*>.isStaticMethodInInterface(kClass: KClassImpl<*>): Boolean =
+private fun ReflectKCallable<*>.isStaticMethodInInterface(kClass: MemberContainer<*>): Boolean =
     isStatic && kClass.classKind == ClassKind.INTERFACE && !isJavaField
 
 /**
  * Non-transitive members don't inherit transitively but appear in the 'members' list of the immediate KClass
  */
-internal fun isNonTransitiveMember(kClass: KClassImpl<*>, member: ReflectKCallable<*>): Boolean =
+internal fun isNonTransitiveMember(kClass: MemberContainer<*>, member: ReflectKCallable<*>): Boolean =
     member.visibility == KVisibility.PRIVATE ||
             // static methods (but not fields) in interfaces are never inherited (neither in Java nor in Kotlin)
             member.isStaticMethodInInterface(kClass)
@@ -63,14 +64,15 @@ internal fun isNonTransitiveMember(kClass: KClassImpl<*>, member: ReflectKCallab
  * By "transitive" we mean that the map of every inheritor class/interface is a strict superset
  * of their parent classes' maps.
  */
-internal fun computeFakeOverrideMembersForName(kClass: KClassImpl<*>, name: String): MembersJavaSignatureMap {
-    val declaredMembers = kClass.data.value.getDeclaredMembersByName(name).filterNot { isNonTransitiveMember(kClass, it) }
+internal fun computeFakeOverrideMembersForName(kClass: MemberContainer<*>, name: String): MembersJavaSignatureMap {
+    val declaredMembers = kClass.getDeclaredMembersByName(name).filterNot { isNonTransitiveMember(kClass, it) }
     val declaredKotlinSignatures =
         if (kClass.isKotlin) declaredMembers.mapTo(HashSet()) { it.toEquatableCallableSignature(EqualityMode.KotlinSignature) }
         else emptySet()
+    val javaSignatureMode = EqualityMode.JavaSignature(isKotlinClass = kClass.isKotlin)
     val result: MutableMembersJavaSignatureMap = HashMap()
     for (supertype in kClass.supertypes) {
-        val supertypeKClass = supertype.classifier as? KClassImpl<*>
+        val supertypeKClass = supertype.classifier as? MemberContainer<*>
             ?: error(
                 "Non-denotable supertypes are not possible. " +
                         "Supertype '$supertype' appears non-denotable in class '$kClass'"
@@ -80,19 +82,19 @@ internal fun computeFakeOverrideMembersForName(kClass: KClassImpl<*>, name: Stri
             val member = supertypeMember.createFakeOverride(kClass, substitutor)
             val kotlinSignature = member.toEquatableCallableSignature(EqualityMode.KotlinSignature)
             if (kotlinSignature in declaredKotlinSignatures) continue
-            // Inherited signatures are always compared by the JvmSignatures. Even for kotlin classes.
-            val javaSignature = kotlinSignature.withEqualityMode(EqualityMode.JavaSignature)
+            // Inherited signatures are always compared by the Java signatures. Even for Kotlin classes.
+            val javaSignature = kotlinSignature.withEqualityMode(javaSignatureMode)
             val existingMember = result[javaSignature]
             result[javaSignature] = if (existingMember == null) member else createIntersectionOverride(existingMember, member)
         }
     }
     for (member in declaredMembers) {
-        result[member.toEquatableCallableSignature(EqualityMode.JavaSignature)] = member
+        result[member.toEquatableCallableSignature(javaSignatureMode)] = member
     }
     return result
 }
 
-private fun ReflectKCallable<*>.createFakeOverride(subclass: KClassImpl<*>, substitutor: KTypeSubstitutor): ReflectKCallable<*> =
+private fun ReflectKCallable<*>.createFakeOverride(subclass: MemberContainer<*>, substitutor: KTypeSubstitutor): ReflectKCallable<*> =
     shallowCopy(
         subclass,
         overriddenStorage.withChainedClassTypeParametersSubstitutor(substitutor).copy(
@@ -161,18 +163,18 @@ internal fun computeOverriddenFunctions(callable: ReflectKFunction): Collection<
         return callable.overriddenStorage.overridden.map { it as ReflectKFunction }
     }
 
-    val container = callable.container as? KClassImpl<*> ?: return emptyList()
+    val container = callable.container as? MemberContainer<*> ?: return emptyList()
     val thisKotlinSignature = callable.toEquatableCallableSignature(EqualityMode.KotlinSignature)
     return computeOverriddenFunctions(container, thisKotlinSignature)
 }
 
 internal fun computeOverriddenFunctions(
-    container: KClassImpl<*>,
+    container: MemberContainer<*>,
     signature: EquatableCallableSignature<EqualityMode.KotlinSignature>,
 ): Collection<ReflectKFunction> {
     val result = mutableListOf<ReflectKFunction>()
     for (supertype in container.supertypes) {
-        val supertypeKClass = supertype.classifier as? KClassImpl<*> ?: continue
+        val supertypeKClass = supertype.classifier as? MemberContainer<*> ?: continue
         val substitutor = KTypeSubstitutor.create(supertype)
         for (supertypeMember in getSupertypeMembersByName(supertype, supertypeKClass, signature.name)) {
             if (supertypeMember !is ReflectKFunction) continue
@@ -186,7 +188,11 @@ internal fun computeOverriddenFunctions(
     return result
 }
 
-private fun getSupertypeMembersByName(supertype: KType, supertypeKClass: KClassImpl<*>, name: String): Collection<ReflectKCallable<*>> {
+private fun getSupertypeMembersByName(
+    supertype: KType,
+    supertypeKClass: MemberContainer<*>,
+    name: String,
+): Collection<ReflectKCallable<*>> {
     // There are no KClass instances for suspend function types before KT-79225, so we create suspend invoke manually.
     if (name == "invoke" && (supertype as? AbstractKType)?.isSuspendFunctionType == true) {
         val functionKmClass = supertypeKClass.kmClass
@@ -222,13 +228,14 @@ internal fun <T : EqualityMode> ReflectKCallable<*>.toEquatableCallableSignature
     val functionJvmSignature = (this as? ReflectKFunction)?.signature
     val jvmNameIfFunction = functionJvmSignature?.substringBeforeLast('(')
     val functionJvmDescriptor = functionJvmSignature?.substring(jvmNameIfFunction!!.length)
-    // JVM signature of an inline class function is the signature of the static "-impl" method, whose first parameter is the receiver.
-    val hasReceiverInJvmSignature = functionJvmSignature != null &&
-            (originalContainer as? KClassImpl<*>)?.isJvmInlineValue == true &&
-            parameters.any { it.kind == KParameter.Kind.INSTANCE }
     val jvmParameterTypes = functionJvmDescriptor?.let {
         container.jClass.safeClassLoader.parseAndLoadDescriptor(it, loadReturnType = false).parameters
     }.orEmpty()
+    // JVM signature of an inline class function is the signature of the static "-impl" method, whose first parameter is the receiver.
+    val hasReceiverInJvmSignature = functionJvmSignature != null &&
+            (originalContainer as? KClassImpl<*>)?.isJvmInlineValue == true &&
+            parameters.any { it.kind == KParameter.Kind.INSTANCE } &&
+            jvmParameterTypes.size == kotlinParameterTypes.size + (if (isSuspend) 1 else 0) + 1
     val javaParameterTypes = jvmParameterTypes.alignWithKotlinParameters(isSuspend, hasReceiverInJvmSignature)
     return EquatableCallableSignature(
         kind,
@@ -241,7 +248,7 @@ internal fun <T : EqualityMode> ReflectKCallable<*>.toEquatableCallableSignature
             // Workaround KT-13077: `javaMethod` doesn't work for builtins, so find the method manually, falling back to erased types.
             val method = when (this) {
                 is JavaKNamedFunction -> jMethod
-                is ReflectKFunction -> findOriginalJavaMethod(jvmNameIfFunction!!, jvmParameterTypes)
+                is ReflectKFunction -> findOriginalJavaMethod(jvmNameIfFunction!!, functionJvmDescriptor!!)
                 else -> null
             }
             method?.genericParameterTypes?.toList()?.alignWithKotlinParameters(isSuspend, hasReceiverInJvmSignature) ?: javaParameterTypes
@@ -257,8 +264,8 @@ internal fun <T : EqualityMode> ReflectKCallable<*>.toEquatableCallableSignature
 // a Java class implementing `Function1<String, Integer>`, `javaMethod` returns the synthetic bridge `invoke(Object): Object` declared
 // in the Java class, whose generic parameter types are erased, while this property returns `Function1.invoke(P1)` whose generic
 // parameter type is the type variable `P1`.
-private fun ReflectKFunction.findOriginalJavaMethod(name: String, parameterTypes: List<Class<*>>): Method? {
-    val method = container.findMethodBySignature(name, parameterTypes, returnType = null) ?: return null
+private fun ReflectKFunction.findOriginalJavaMethod(name: String, desc: String): Method? {
+    val method = container.findMethodBySignature(name, desc) ?: return null
     if (!method.isBridge) return method
     val originalContainer = overriddenStorage.originalContainerIfFakeOverride ?: return method
     val jvmName = signature.substringBeforeLast('(')
@@ -272,9 +279,6 @@ private fun <T> List<T>.alignWithKotlinParameters(isSuspend: Boolean, hasReceive
 
 internal val Class<*>.isKotlinClassOrPackage: Boolean
     get() = getAnnotation(Metadata::class.java) != null
-
-internal val KClassImpl<*>.isKotlin: Boolean
-    get() = kmClass != null
 
 internal fun List<KTypeParameter>.substitutedWith(arguments: List<KTypeParameter>): KTypeSubstitutor? {
     if (size != arguments.size) return null
@@ -299,9 +303,12 @@ internal sealed class EqualityMode {
      * There is also the third kind of signatures: JVM signatures
      * JVM signature is a plain triple: (jvmName: String, parameters: List<Class<*>>, returnType: Class<*>)
      * Contrary to JVM signature, Java signature doesn't include `returnType`,
-     * and Java signatures respect class generics (but not method generics)
+     * and Java signatures respect non-raw generic parameter types and method type parameters (including their bounds, see JLS 8.4.4).
+     *
+     * @param isKotlinClass whether the members belong to a Kotlin class. In Java, a generic method can be overridden by a method whose
+     *   signature is the erasure of the generic one (JLS 8.4.2).
      */
-    data object JavaSignature : EqualityMode()
+    data class JavaSignature(val isKotlinClass: Boolean) : EqualityMode()
 }
 
 // Signatures that you can test for equality
@@ -328,7 +335,7 @@ internal class EquatableCallableSignature<T : EqualityMode>(
     }
 
     private val isJavaFunctionSignature: Boolean
-        get() = equalityMode == EqualityMode.JavaSignature && kind == SignatureKind.FUNCTION
+        get() = equalityMode is EqualityMode.JavaSignature && kind == SignatureKind.FUNCTION
 
     init {
         check(
@@ -374,14 +381,42 @@ internal class EquatableCallableSignature<T : EqualityMode>(
         return if (isJavaFunctionSignature) equalsByJavaSignature(other) else equalsByKotlinSignature(other)
     }
 
-    private fun equalsByJavaSignature(other: EquatableCallableSignature<*>): Boolean =
-        jvmNameIfFunction == other.jvmNameIfFunction &&
-                javaErasedParameterTypes.indices.all { i -> areEqualJavaParameterTypes(i, other) }
+    private fun equalsByJavaSignature(other: EquatableCallableSignature<*>): Boolean {
+        if (jvmNameIfFunction != other.jvmNameIfFunction) return false
+        val substitutor = typeParameters.substitutedWith(other.typeParameters)
+            ?: return isOverrideEquivalentByErasure(other)
+        // Per JLS 8.4.4, methods have the same type parameters only if their bounds are equal after renaming.
+        return areEqualTypeParameterBounds(substitutor, other) &&
+                javaErasedParameterTypes.indices.all { i -> areEqualJavaParameterTypes(i, other, substitutor) }
+    }
 
-    private fun areEqualJavaParameterTypes(i: Int, other: EquatableCallableSignature<*>): Boolean =
+    // Per JLS 8.4.2, methods with different type parameters are override-equivalent only if the signature of one of them is the erasure
+    // of the signature of the other. This is only possible in Java, see `EqualityMode.JavaSignature`.
+    private fun isOverrideEquivalentByErasure(other: EquatableCallableSignature<*>): Boolean =
+        !(equalityMode as EqualityMode.JavaSignature).isKotlinClass &&
+                (isErasedSignature || other.isErasedSignature) &&
+                javaErasedParameterTypes.indices.all { i -> areEqualErasedJavaParameterTypes(i, other) }
+
+    private val isErasedSignature: Boolean
+        get() = typeParameters.isEmpty() && javaGenericParameterTypes.all { it is Class<*> }
+
+    private fun areEqualJavaParameterTypes(i: Int, other: EquatableCallableSignature<*>, substitutor: KTypeSubstitutor): Boolean {
+        if (!areEqualErasedJavaParameterTypes(i, other)) return false
+        // Non-generic types are compared only by erasure. If one of parameter types is raw, they are considered equal,
+        // because in Java, it's possible to override generic with raw.
+        if (javaGenericParameterTypes[i] !is ParameterizedType || other.javaGenericParameterTypes[i] !is ParameterizedType) return true
+        return areEqualKTypes(
+            substitutor.substituteTopLevelType(kotlinParameterTypes[i], name),
+            other.kotlinParameterTypes[i],
+        )
+    }
+
+    private fun areEqualErasedJavaParameterTypes(i: Int, other: EquatableCallableSignature<*>): Boolean =
         if (javaGenericParameterTypes[i].isClassTypeParameter || other.javaGenericParameterTypes[i].isClassTypeParameter) {
+            // The erasure of a class type parameter is its bound, which is useless after the substitution in a subclass,
+            // so we compare the substituted Kotlin types instead.
+            // Since we don't have type substitutors for Java types, here we abuse KTypes for this purpose
             javaErasedParameterTypes[i].isPrimitive == other.javaErasedParameterTypes[i].isPrimitive &&
-                    // Since we don't have type substitutors for Java types, here we abuse KTypes for this purpose
                     areEqualKTypes(kotlinParameterTypes[i], other.kotlinParameterTypes[i])
         } else {
             javaErasedParameterTypes[i] == other.javaErasedParameterTypes[i]

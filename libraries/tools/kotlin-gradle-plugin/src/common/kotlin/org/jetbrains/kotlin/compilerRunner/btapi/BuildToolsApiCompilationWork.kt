@@ -14,8 +14,10 @@ import org.gradle.workers.WorkAction
 import org.gradle.workers.WorkParameters
 import org.jetbrains.kotlin.build.report.metrics.*
 import org.jetbrains.kotlin.buildtools.api.CompilationResult
+import org.jetbrains.kotlin.buildtools.api.CompilerArgumentsParseException
 import org.jetbrains.kotlin.buildtools.api.ExecutionPolicy
 import org.jetbrains.kotlin.buildtools.api.KotlinLogger
+import org.jetbrains.kotlin.buildtools.api.KotlinReleaseVersion
 import org.jetbrains.kotlin.buildtools.api.KotlinToolchains
 import org.jetbrains.kotlin.buildtools.api.SharedApiClassesClassLoader
 import org.jetbrains.kotlin.buildtools.api.jvm.operations.JvmCompilationOperation
@@ -47,6 +49,7 @@ import org.jetbrains.kotlin.gradle.report.TaskExecutionInfo
 import org.jetbrains.kotlin.gradle.report.TaskExecutionResult
 import org.jetbrains.kotlin.gradle.report.collectIcTags
 import org.jetbrains.kotlin.gradle.tasks.*
+import org.jetbrains.kotlin.tooling.core.KotlinToolingVersion
 import java.io.File
 import javax.inject.Inject
 
@@ -152,6 +155,8 @@ internal abstract class BuildToolsApiCompilationWork @Inject constructor(
             } else {
                 fallback(null, daemonCompilationResult.second)
             }
+        } catch (e: CompilerArgumentsParseException) {
+            throw e
         } catch (t: Throwable) {
             fallback(t, null)
         }
@@ -175,9 +180,14 @@ internal abstract class BuildToolsApiCompilationWork @Inject constructor(
         val compilerMessageRenderer = ProblemsApiCompilerMessageRenderer(
             suppressLogForProblemsApi = parameters.warningModeIsAll.getOrElse(false),
         )
-        val runner = createRunner(workArguments.btaToolchain ?: error("btaToolchain is not set for task ${workArguments.taskPath}"), workArguments, metrics)
-        val backup = initializeBackup(log)
         val buildSession = obtainBuildSession()
+        val runner = createRunner(
+            workArguments.btaToolchain ?: error("btaToolchain is not set for task ${workArguments.taskPath}"),
+            workArguments,
+            metrics,
+            buildSession.kotlinToolchains.compilerReleaseVersion(),
+        )
+        val backup = initializeBackup(log)
 
         try {
             with(log) {
@@ -211,7 +221,17 @@ internal abstract class BuildToolsApiCompilationWork @Inject constructor(
             }
             log.info(effectiveExecutionStrategy.asFinishLogMessage)
 
+            // 2.4.20+ logs bad flags past the renderer (KT-85504).
+            if (compilationResult == CompilationResult.COMPILATION_ERROR &&
+                !compilerMessageRenderer.hasRenderedErrors() &&
+                compilerLogsArgumentErrors(buildSession)
+            ) {
+                reportArgumentsRejected(buildSession, rejection = null)
+            }
             throwExceptionIfCompilationFailed(compilationResult.asExitCode, executionStrategy)
+        } catch (e: CompilerArgumentsParseException) {
+            reportArgumentsRejected(buildSession, e.message)
+            throw FailedCompilationException(e.message.orEmpty(), e)
         } catch (e: FailedCompilationException) {
             // Restore outputs only for CompilationErrorException or OOMErrorException (see GradleKotlinCompilerWorkAction.execute)
             backup?.tryRestoringOnRecoverableException(e) { restoreAction ->
@@ -252,6 +272,24 @@ internal abstract class BuildToolsApiCompilationWork @Inject constructor(
         }
     }
 
+    private fun reportArgumentsRejected(buildSession: KotlinToolchains.BuildSession, rejection: String?) {
+        val compilerVersion = buildSession.kotlinToolchains.getCompilerVersion()
+        val compiler = compilerVersion.toToolingVersionOrNull() ?: return
+        val pluginVersion = workArguments.kotlinPluginVersion
+        if (compiler == pluginVersion.toToolingVersionOrNull()) return
+        parameters.toolingDiagnosticsCollector.orNull?.report(
+            parameters,
+            KotlinToolingDiagnostics.KotlinCompilerArgumentsRejected(rejection, compilerVersion, pluginVersion),
+        )
+    }
+
+    private fun compilerLogsArgumentErrors(buildSession: KotlinToolchains.BuildSession): Boolean {
+        val compiler = buildSession.kotlinToolchains.getCompilerVersion().toToolingVersionOrNull() ?: return false
+        return compiler >= KotlinToolingVersion(2, 4, 20, "snapshot") // Below all 2.4.20
+    }
+
+    private fun String.toToolingVersionOrNull(): KotlinToolingVersion? = runCatching { KotlinToolingVersion(this) }.getOrNull()
+
     private fun obtainBuildSession(): KotlinToolchains.BuildSession = parameters.buildSessionService.get().getOrCreateBuildSession(
         parameters.classLoadersCachingService.get(),
         workArguments.compilerFullClasspath
@@ -263,6 +301,7 @@ private fun createRunner(
     toolchain: BtaToolchain,
     workArguments: GradleKotlinCompilerWorkArguments,
     metrics: BuildMetricsReporter<BuildTimeMetric, BuildPerformanceMetric>,
+    compilerVersion: KotlinReleaseVersion,
 ): BtaCompilerRunner<*> {
     val icEnv = workArguments.incrementalCompilationEnvironment
     val outputDirs = workArguments.outputFiles.map(File::toPath)
@@ -276,7 +315,7 @@ private fun createRunner(
             metrics,
             JvmBuildOperationFactory(compilerArgs, workArguments.kotlinScriptExtensions.toList()),
             icEnv?.let {
-                JvmIncrementalConfigurationStrategy(icEnv, outputDirs)
+                JvmIncrementalConfigurationStrategy(icEnv, outputDirs, compilerVersion)
             } ?: IncrementalConfigurationStrategy.Default,
             daemonJvmArgs,
             compilerArgumentsLogLevel,
@@ -352,3 +391,6 @@ internal object SharedApiClassesClassLoaderProvider : ParentClassLoaderProvider 
 
     override fun equals(other: Any?) = other is SharedApiClassesClassLoaderProvider
 }
+
+private fun KotlinToolchains.compilerReleaseVersion(): KotlinReleaseVersion =
+    KotlinToolingVersion(getCompilerVersion()).let { KotlinReleaseVersion(it.major, it.minor, it.patch) }

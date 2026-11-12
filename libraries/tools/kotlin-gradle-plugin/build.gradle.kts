@@ -116,6 +116,7 @@ dependencies {
         commonCompileOnly(project(compilerRuntimeDependency)) { isTransitive = false }
     }
     commonCompileOnly(libs.guava)
+    commonCompileOnly(libs.org.jetbrains.annotations)
     commonCompileOnly(project(":daemon-common")) {
         isTransitive = false
     }
@@ -596,7 +597,6 @@ testing {
                 implementation("com.github.gundy:semver4j:0.16.4:nodeps") {
                     exclude(group = "*")
                 }
-                implementation("org.reflections:reflections:0.10.2")
                 implementation(project(":compose-compiler-gradle-plugin"))
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json") {
                     version {

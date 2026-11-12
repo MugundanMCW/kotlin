@@ -18,6 +18,8 @@ import org.jetbrains.kotlin.gradle.uklibs.applyMultiplatform
 import org.jetbrains.kotlin.gradle.uklibs.include
 import org.jetbrains.kotlin.konan.target.Xcode
 import org.jetbrains.kotlin.konan.target.XcodeVersion
+import org.jetbrains.kotlin.test.TestMetadata
+import org.jetbrains.kotlin.testFederation.MustRunOnChangesInGradle
 import kotlin.test.assertEquals
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.condition.OS
@@ -35,12 +37,14 @@ import kotlin.io.path.*
     enabledOnCI = [OS.MAC],
 )
 @SwiftPMImportGradlePluginTests
+@MustRunOnChangesInGradle
 @GradleTestVersions(
     // KT-90453: Most of these tests don't test anything Gradle-specific and they are quite slow, so only run these with latest Gradle version
     minVersion = TestVersions.Gradle.MAX_SUPPORTED
 )
 class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
 
+    @TestMetadata("emptyxcode")
     @DisplayName("direct dependency on Firebase")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)
@@ -118,6 +122,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @DisplayName("direct dependency on GoogleMaps")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)
@@ -156,6 +161,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @DisplayName("direct dependency on Sentry")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)
@@ -194,6 +200,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @DisplayName("direct dependency on RevenueCat")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)
@@ -244,6 +251,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @DisplayName("direct dependency on AWS")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)
@@ -387,6 +395,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @DisplayName("direct dependency on Mapbox")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)
@@ -446,6 +455,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @GradleTestVersions(
         // This test is relatively fast, run it on min version as well
         minVersion = TestVersions.Gradle.MIN_SUPPORTED
@@ -503,6 +513,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @DisplayName("direct dependency on Datadog")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)
@@ -596,6 +607,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @DisplayName("direct dependency on AdjustSDK")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)
@@ -754,6 +766,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @DisplayName("direct dependency on AppAuth")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)
@@ -801,6 +814,7 @@ class SwiftPMImportPopularSwiftPMDependenciesTests : KGPBaseTest() {
         )
     }
 
+    @TestMetadata("emptyxcode")
     @DisplayName("local SwiftPM package with relative path")
     @ParameterizedTest(name = "{displayName} with {0} and isStatic={1}")
     @ArgumentsSource(SpmImportArgumentsProvider::class)

@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.ir.backend.js.lower.calls
 import org.jetbrains.kotlin.ir.backend.js.JsIrBackendContext
 import org.jetbrains.kotlin.ir.backend.js.ir.JsIrBuilder
 import org.jetbrains.kotlin.ir.backend.js.utils.inlineClassRepresentation
-import org.jetbrains.kotlin.ir.backend.js.utils.isEqualsInheritedFromAny
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.IrCall
 import org.jetbrains.kotlin.ir.expressions.IrExpression
@@ -173,7 +172,7 @@ class EqualityAndComparisonCallsTransformer(context: JsIrBackendContext) : Calls
         val function = call.symbol.owner
         return when {
             // Nothing special
-            !function.isEqualsInheritedFromAny() -> call
+            !function.isEquals() -> call
 
             // `Any.equals` works as identity operator
             call.isSuperToAny() ->
@@ -194,7 +193,7 @@ class EqualityAndComparisonCallsTransformer(context: JsIrBackendContext) : Calls
         if (klass.isEnumClass && klass.isExternal) return null
         return klass.declarations.asSequence()
             .filterIsInstance<IrSimpleFunction>()
-            .filter { it.isEqualsInheritedFromAny() && !it.isFakeOverriddenFromAny() }
+            .filter { it.isEquals() && !it.isFakeOverriddenFromAny() }
             .atMostOne()
     }
 

@@ -1,5 +1,6 @@
 package org.jetbrains.kotlin.gradle
 
+import org.gradle.api.logging.LogLevel
 import org.gradle.testkit.runner.BuildResult
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.build.report.metrics.BuildAttribute
@@ -8,6 +9,7 @@ import org.jetbrains.kotlin.gradle.testbase.*
 import org.jetbrains.kotlin.gradle.testbase.BuildOptions.JsOptions
 import org.jetbrains.kotlin.gradle.util.checkedReplace
 import org.jetbrains.kotlin.gradle.util.replaceText
+import org.jetbrains.kotlin.test.TestMetadata
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import java.io.File
@@ -73,6 +75,7 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
     override fun testFailureHandling_ToolError(gradleVersion: GradleVersion) {
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("Add new dependency in lib project causes recompilation in JS")
     @GradleTest
     override fun testAddExternalDependencyInLib(gradleVersion: GradleVersion) {
@@ -84,11 +87,12 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
             build("assemble") {
                 assertTasksExecuted(":lib:$compileKotlinTaskName")
                 assertTasksUpToDate(":app:$compileKotlinTaskName")
-                assertNonIncrementalCompilation(BuildAttribute.DEP_CHANGE_ADDED_ENTRY)
+                assertNonIncrementalCompilationInBuildReport(BuildAttribute.DEP_CHANGE_ADDED_ENTRY)
             }
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("Add project dependency in lib subproject causes recompilation in JS")
     @GradleTest
     override fun testAddProjectDependencyInLib(gradleVersion: GradleVersion) {
@@ -100,11 +104,12 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
             build("assemble") {
                 assertTasksExecuted(":lib:$compileKotlinTaskName")
                 assertTasksUpToDate(":app:$compileKotlinTaskName")
-                assertNonIncrementalCompilation(BuildAttribute.DEP_CHANGE_ADDED_ENTRY)
+                assertNonIncrementalCompilationInBuildReport(BuildAttribute.DEP_CHANGE_ADDED_ENTRY)
             }
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("ABI change in lib after lib clean")
     @GradleTest
     override fun testAbiChangeInLib_afterLibClean(gradleVersion: GradleVersion) {
@@ -114,7 +119,7 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
             build(":lib:clean")
             changeMethodSignatureInLib()
 
-            build("assemble") {
+            build("assemble", buildOptions = buildOptions.copy(logLevel = LogLevel.DEBUG)) {
                 assertCompiledKotlinSources(
                     subProject("lib")
                         .projectPath
@@ -132,6 +137,7 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("Lib: change method body with non-ABI change")
     @GradleTest
     override fun testNonAbiChangeInLib_changeMethodBody(gradleVersion: GradleVersion) {
@@ -141,16 +147,16 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
             changeMethodBodyInLib()
 
             build("assemble") {
-                assertCompiledKotlinSources(
+                assertCompiledKotlinSourcesInBuildReport(
                     getExpectedKotlinSourcesForDefaultProject(
                         libSources = listOf("bar/A.kt")
-                    ),
-                    output
+                    )
                 )
             }
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("Lib: after cleaning lib project")
     @GradleTest
     override fun testAbiChangeInLib_afterLibClean_withAbiSnapshot(gradleVersion: GradleVersion) {
@@ -160,7 +166,7 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
             build(":lib:clean")
             changeMethodSignatureInLib()
 
-            build("assemble") {
+            build("assemble", buildOptions = buildOptions.copy(logLevel = LogLevel.DEBUG)) {
                 // TODO: With ABI snapshot, app compilation should be incremental, currently it is not.
                 assertCompiledKotlinSources(
                     (subProject("lib")
@@ -178,6 +184,7 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("Remove project library from classpath")
     @GradleTest
     override fun testRemoveLibFromClasspath(gradleVersion: GradleVersion) {
@@ -205,11 +212,12 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
             }
 
             build("assemble") {
-                assertNonIncrementalCompilation(BuildAttribute.UNKNOWN_CHANGES_IN_GRADLE_INPUTS)
+                assertNonIncrementalCompilationInBuildReport(BuildAttribute.UNKNOWN_CHANGES_IN_GRADLE_INPUTS)
             }
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("Remove external library from classpath")
     @GradleTest
     override fun testRemoveExternalDependencyFromClasspath(gradleVersion: GradleVersion) {
@@ -223,11 +231,12 @@ class IncrementalCompilationJsMultiProjectIT : BaseIncrementalCompilationMultiPr
             build("assemble") {
                 assertTasksExecuted(":lib:$compileKotlinTaskName")
                 assertTasksUpToDate(":app:$compileKotlinTaskName")
-                assertNonIncrementalCompilation(BuildAttribute.DEP_CHANGE_REMOVED_ENTRY)
+                assertNonIncrementalCompilationInBuildReport(BuildAttribute.DEP_CHANGE_REMOVED_ENTRY)
             }
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("Lib project classes became final")
     @GradleTest
     override fun testLibClassBecameFinal(gradleVersion: GradleVersion) {
@@ -258,6 +267,7 @@ open class IncrementalCompilationJvmMultiProjectIT : BaseIncrementalCompilationM
 
     override val defaultProjectName: String = "incrementalMultiproject"
 
+    @TestMetadata("duplicatedClass")
     // todo: do the same for js backend
     @DisplayName("Duplicated class")
     @GradleTest
@@ -271,14 +281,14 @@ open class IncrementalCompilationJvmMultiProjectIT : BaseIncrementalCompilationM
             usagesFiles.forEach { file -> file.modify { "$it\n " } }
 
             build("assemble") {
-                assertCompiledKotlinSources(
-                    usagesFiles.map { it.relativeTo(projectPath) },
-                    output
+                assertCompiledKotlinSourcesInBuildReport(
+                    usagesFiles.map { it.relativeTo(projectPath) }
                 )
             }
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("Compile lib with Groovy")
     @GradleTest
     open fun testCompileLibWithGroovy(gradleVersion: GradleVersion) {
@@ -286,13 +296,13 @@ open class IncrementalCompilationJvmMultiProjectIT : BaseIncrementalCompilationM
             result.assertTasksExecuted(":lib:$compileKotlinTaskName")
             result.assertTasksUpToDate(":app:$compileKotlinTaskName") // App compilation has 'compile avoidance'
 
-            assertCompiledKotlinSources(
-                project.getExpectedKotlinSourcesForDefaultProject(libSources = listOf("bar/A.kt")),
-                result.output
+            result.assertCompiledKotlinSourcesInBuildReport(
+                project.getExpectedKotlinSourcesForDefaultProject(libSources = listOf("bar/A.kt"))
             )
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     //KT-55905
     @DisplayName("Imncremental compilation with source set update")
     @GradleTest
@@ -353,6 +363,7 @@ open class IncrementalCompilationJvmMultiProjectIT : BaseIncrementalCompilationM
         }
     }
 
+    @TestMetadata("incrementalMultiproject")
     @DisplayName("KT-43489: Make sure build history mapping is not initialized too early")
     @GradleTest
     fun testBuildHistoryMappingLazilyComputedWithWorkers(gradleVersion: GradleVersion) {
@@ -385,11 +396,12 @@ open class IncrementalCompilationJvmMultiProjectIT : BaseIncrementalCompilationM
                     libSources = listOf("bar/A.kt", "bar/B.kt"),
                     appSources = listOf("foo/AA.kt", "foo/AAA.kt", "foo/BB.kt")
                 )
-                assertCompiledKotlinSources(expectedSources, output)
+                assertCompiledKotlinSourcesInBuildReport(expectedSources)
             }
         }
     }
 
+    @TestMetadata("lenientMode")
     @DisplayName("Incremental compilation with lenient mode")
     @GradleTest
     fun testLenientModeIncrementalCompilation(gradleVersion: GradleVersion) {
@@ -474,7 +486,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
                     appSources = listOf("foo/AA.kt", "foo/AAA.kt", "foo/BB.kt", "foo/fooUseA.kt")
                 )
 
-                assertCompiledKotlinSources(expectedSources, output)
+                assertCompiledKotlinSourcesInBuildReport(expectedSources)
             }
         }
     }
@@ -494,7 +506,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
                     libSources = listOf("bar/A.kt", "bar/B.kt"),
                     appSources = listOf("foo/AA.kt", "foo/AAA.kt", "foo/BB.kt")
                 )
-                assertCompiledKotlinSources(expectedSources, output)
+                assertCompiledKotlinSourcesInBuildReport(expectedSources)
             }
         }
     }
@@ -510,9 +522,8 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
             build("assemble") {
                 assertTasksExecuted(":lib:$compileKotlinTaskName")
                 assertTasksUpToDate(":app:$compileKotlinTaskName")
-                assertCompiledKotlinSources(
-                    getExpectedKotlinSourcesForDefaultProject(libSources = listOf("bar/A.kt")),
-                    output
+                assertCompiledKotlinSourcesInBuildReport(
+                    getExpectedKotlinSourcesForDefaultProject(libSources = listOf("bar/A.kt"))
                 )
             }
         }
@@ -530,7 +541,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
                 assertTasksExecuted(":lib:$compileKotlinTaskName")
                 assertTasksUpToDate(":app:$compileKotlinTaskName")
                 // Lib compilation is incremental (no files are recompiled)
-                assertCompiledKotlinSources(emptyList(), output)
+                assertCompiledKotlinSourcesInBuildReport(emptyList())
             }
         }
     }
@@ -547,7 +558,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
                 assertTasksExecuted(":lib:$compileKotlinTaskName")
                 assertTasksUpToDate(":app:$compileKotlinTaskName")
                 // Lib compilation is incremental (no files are recompiled)
-                assertCompiledKotlinSources(emptyList(), output)
+                assertCompiledKotlinSourcesInBuildReport(emptyList())
             }
         }
     }
@@ -587,7 +598,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
             build(":lib:clean")
             changeMethodSignatureInLib()
 
-            build("assemble") {
+            build("assemble", buildOptions = buildOptions.copy(logLevel = LogLevel.DEBUG)) {
                 val expectedSources = getExpectedKotlinSourcesForDefaultProject(
                     appSources = listOf("foo/AA.kt", "foo/AAA.kt", "foo/BB.kt", "foo/fooUseA.kt")
                 ) + subProject("lib").projectPath.resolve("src").allKotlinSources.map { it.relativeTo(projectPath) }
@@ -611,11 +622,10 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
             }
 
             build("assemble") {
-                assertCompiledKotlinSources(
+                assertCompiledKotlinSourcesInBuildReport(
                     getExpectedKotlinSourcesForDefaultProject(
                         appSources = listOf("foo/fooCallUseAB.kt", "bar/barUseAB.kt")
-                    ),
-                    output
+                    )
                 )
             }
         }
@@ -643,7 +653,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
                         "foo/fooUseBB.kt".takeIf { impactedClassInAppIsRecompiled }
                     )
                 )
-                assertCompiledKotlinSources(expectedSources, output)
+                assertCompiledKotlinSourcesInBuildReport(expectedSources)
             }
         }
     }
@@ -675,9 +685,8 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
             }
 
             build("assemble") {
-                assertCompiledKotlinSources(
-                    listOf(aaKt.relativeTo(projectPath)),
-                    output
+                assertCompiledKotlinSourcesInBuildReport(
+                    listOf(aaKt.relativeTo(projectPath))
                 )
             }
         }
@@ -697,7 +706,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
                 assertTasksExecuted(":lib:$compileKotlinTaskName")
                 assertTasksUpToDate(":app:$compileKotlinTaskName")
                 // Lib compilation is incremental (no files are recompiled)
-                assertCompiledKotlinSources(emptyList(), output)
+                assertCompiledKotlinSourcesInBuildReport(emptyList())
             }
         }
     }
@@ -757,11 +766,10 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
             }
 
             build("assemble") {
-                assertCompiledKotlinSources(
+                assertCompiledKotlinSourcesInBuildReport(
                     getExpectedKotlinSourcesForDefaultProject(
                         appSources = listOf("foo/fooCallUseAB.kt", "bar/barUseAB.kt")
-                    ),
-                    output
+                    )
                 )
             }
         }
@@ -776,7 +784,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
             build(":lib:clean")
             changeMethodSignatureInLib()
 
-            build("assemble") {
+            build("assemble", buildOptions = buildOptions.copy(logLevel = LogLevel.DEBUG)) {
                 val expectedSources = getExpectedKotlinSourcesForDefaultProject(
                     appSources = listOf("foo/AA.kt", "foo/AAA.kt", "foo/BB.kt", "foo/fooUseA.kt")
                 ) + subProject("lib").projectPath.resolve("src").allKotlinSources.map { it.relativeTo(projectPath) }
@@ -799,11 +807,10 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
             }
 
             build("assemble") {
-                assertCompiledKotlinSources(
+                assertCompiledKotlinSourcesInBuildReport(
                     getExpectedKotlinSourcesForDefaultProject(
                         libSources = listOf("bar/BarDummy.kt")
-                    ),
-                    output
+                    )
                 )
             }
         }
@@ -847,7 +854,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
             }
 
             build(":app:$compileKotlinTaskName") {
-                assertIncrementalCompilation(
+                assertIncrementalCompilationInBuildReport(
                     expectedCompiledKotlinFiles = getExpectedKotlinSourcesForDefaultProject(
                         libSources = listOf("bar/InterfaceInLib.kt"),
                         appSources = listOfNotNull(
@@ -898,7 +905,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
 
             // In the next build, compilation should be non-incremental as incremental state is missing
             build(":lib:$compileKotlinTaskName") {
-                assertNonIncrementalCompilation()
+                assertNonIncrementalCompilationInBuildReport()
             }
         }
     }
@@ -919,7 +926,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
 
             // In the next build, compilation should be incremental and fail (and not fall back to non-incremental compilation)
             buildAndFail(":lib:$compileKotlinTaskName") {
-                assertIncrementalCompilation()
+                assertIncrementalCompilationInBuildReport()
                 assertTasksFailed(":lib:$compileKotlinTaskName")
                 if (gradleVersion < GradleVersion.version(TestVersions.Gradle.G_9_6)) {
                     assertOutputContains("Compilation error. See log for more details")
@@ -934,7 +941,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
 
             // In the next build, compilation should be incremental and succeed
             build(":lib:$compileKotlinTaskName") {
-                assertIncrementalCompilation(
+                assertIncrementalCompilationInBuildReport(
                     expectedCompiledKotlinFiles = getExpectedKotlinSourcesForDefaultProject(
                         libSources = listOf("bar/A.kt", "bar/B.kt", "bar/barUseA.kt")
                     )
@@ -964,7 +971,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
             // In the next build, compilation should be incremental and fail, then fall back to non-incremental compilation and succeed
             if (gradleVersion < GradleVersion.version(TestVersions.Gradle.G_9_6)) {
                 build(":lib:$compileKotlinTaskName") {
-                    assertIncrementalCompilationFellBackToNonIncremental(BuildAttribute.IC_FAILED_TO_COMPILE_INCREMENTALLY)
+                    assertIncrementalCompilationFellBackToNonIncrementalInBuildReport(BuildAttribute.IC_FAILED_TO_COMPILE_INCREMENTALLY)
                     // Also check that the output is not deleted (regression test for KT-49780)
                     assertFileExists(lookupFile)
                 }
@@ -972,7 +979,7 @@ abstract class BaseIncrementalCompilationMultiProjectIT : IncrementalCompilation
                 // FIXME: KT-87824 Report an exception raised during an incremental compilation as an internal compiler error
                 // IC sends diagnostic with error severity level which triggers build failure
                 buildAndFail(":lib:$compileKotlinTaskName") {
-                    assertIncrementalCompilationFellBackToNonIncremental(BuildAttribute.IC_FAILED_TO_COMPILE_INCREMENTALLY)
+                    assertIncrementalCompilationFellBackToNonIncrementalInBuildReport(BuildAttribute.IC_FAILED_TO_COMPILE_INCREMENTALLY)
                     // Also check that the output is not deleted (regression test for KT-49780)
                     assertFileExists(lookupFile)
                 }

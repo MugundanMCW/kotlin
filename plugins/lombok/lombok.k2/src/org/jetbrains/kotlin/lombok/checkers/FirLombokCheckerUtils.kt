@@ -183,7 +183,8 @@ private val implementedAnnotationInfos: Map<ClassId, ImplementedAnnotationsInfo>
             DO_NOT_USE_GETTERS, // Irrelevant in Kotlin
             CACHE_STRATEGY, // Not yet supported
             ON_PARAM, // Not yet supported
-        )
+        ),
+        unsupportedClassModifiers = EnumSet.of(ClassModifier.INNER, ClassModifier.VALUE),
     )
     this[LombokNames.EQUALS_AND_HASH_CODE_INCLUDE_ID] = ImplementedAnnotationsInfo(
         allowedTargetsMap = setOf(
@@ -203,8 +204,10 @@ private val implementedAnnotationInfos: Map<ClassId, ImplementedAnnotationsInfo>
     this[LombokNames.DATA_ID] = ImplementedAnnotationsInfo(
         allowedTargetsMap = setOf(
             KotlinTarget.CLASS_ONLY,
+            KotlinTarget.OBJECT,
             KotlinTarget.LOCAL_CLASS,
-        )
+        ),
+        unsupportedClassModifiers = EnumSet.of(ClassModifier.INNER),
     )
     this[LombokNames.BUILDER_ID] = ImplementedAnnotationsInfo(
         allowedTargetsMap = setOf(
@@ -421,13 +424,18 @@ fun checkCallSuper(
     annotationInfo: ConeLombokAnnotations.ConeLombokAnnotation,
     declaration: FirRegularClass,
     functionNames: Set<Name>,
+    appliedAnnotationName: Name,
 ) {
     if (callSuperMode == CallSuperMode.Warn && declaration.symbol.hasNonTrivialSuperclass(context.session)) {
+        val annotationName = annotationInfo.annotation.resolvedType.lookupTagIfAny?.name!!.takeIf {
+            it != LombokNames.DATA.shortName()
+        } ?: appliedAnnotationName
+
         reporter.reportOn(
             annotationInfo.annotation.source,
             LombokFirDiagnostics.CALL_SUPER_NOT_CALLED,
             functionNames.joinToString("/"),
-            annotationInfo.annotation.resolvedType.lookupTagIfAny?.name!!,
+            annotationName,
             context,
         )
     }

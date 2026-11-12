@@ -1411,13 +1411,17 @@ fun IrFunction.hasShape(
 }
 
 fun IrFunction.isToString(): Boolean =
-    name == OperatorNameConventions.TO_STRING && nonDispatchParameters.isEmpty()
+    name == OperatorNameConventions.TO_STRING &&
+            hasShape(dispatchReceiver = true, regularParameters = 0)
 
 fun IrFunction.isHashCode() =
-    name == OperatorNameConventions.HASH_CODE && nonDispatchParameters.isEmpty()
+    name == OperatorNameConventions.HASH_CODE &&
+            hasShape(dispatchReceiver = true, regularParameters = 0)
 
-fun IrFunction.isEquals() =
-    name == OperatorNameConventions.EQUALS && nonDispatchParameters.singleOrNull()?.type?.isNullableAny() == true
+fun IrFunction.isEquals(): Boolean =
+    name == OperatorNameConventions.EQUALS &&
+            hasShape(dispatchReceiver = true, regularParameters = 1) &&
+            parameters[1].type.isNullableAny()
 
 val IrFunction.isValueClassTypedEquals: Boolean
     get() {

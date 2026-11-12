@@ -1642,6 +1642,12 @@ public class FirOutOfContentRootWithDependenciesLazyDeclarationResolveTestGenera
     }
 
     @Test
+    @TestMetadata("staticDelegatedProperty.kt")
+    public void testStaticDelegatedProperty() {
+      run("staticDelegatedProperty.kt");
+    }
+
+    @Test
     @TestMetadata("staticFunction.kt")
     public void testStaticFunction() {
       run("staticFunction.kt");
@@ -1973,6 +1979,54 @@ public class FirOutOfContentRootWithDependenciesLazyDeclarationResolveTestGenera
     @Test
     public void testAllFilesPresentInFakeDeclarations() {
       KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("analysis/low-level-api-fir/testData/lazyResolve/fakeDeclarations"), Pattern.compile("^(.+)\\.(kt)$"), null, true);
+    }
+
+    @Test
+    @TestMetadata("importedFromObjectFunction.kt")
+    public void testImportedFromObjectFunction() {
+      run("importedFromObjectFunction.kt");
+    }
+
+    @Test
+    @TestMetadata("importedFromObjectFunctionWithImplicitType.kt")
+    public void testImportedFromObjectFunctionWithImplicitType() {
+      run("importedFromObjectFunctionWithImplicitType.kt");
+    }
+
+    @Test
+    @TestMetadata("importedFromObjectPropertyWithExplicitBackingField.kt")
+    public void testImportedFromObjectPropertyWithExplicitBackingField() {
+      run("importedFromObjectPropertyWithExplicitBackingField.kt");
+    }
+
+    @Test
+    @TestMetadata("importedFromObjectPropertyWithExplicitBackingFieldAndImplicitType.kt")
+    public void testImportedFromObjectPropertyWithExplicitBackingFieldAndImplicitType() {
+      run("importedFromObjectPropertyWithExplicitBackingFieldAndImplicitType.kt");
+    }
+
+    @Test
+    @TestMetadata("importedFromObjectPropertyWithImplicitType.kt")
+    public void testImportedFromObjectPropertyWithImplicitType() {
+      run("importedFromObjectPropertyWithImplicitType.kt");
+    }
+
+    @Test
+    @TestMetadata("importedStaticEnumValueOf.kt")
+    public void testImportedStaticEnumValueOf() {
+      run("importedStaticEnumValueOf.kt");
+    }
+
+    @Test
+    @TestMetadata("importedStaticFromCompanionBlockFunction.kt")
+    public void testImportedStaticFromCompanionBlockFunction() {
+      run("importedStaticFromCompanionBlockFunction.kt");
+    }
+
+    @Test
+    @TestMetadata("importedStaticFromCompanionBlockProperty.kt")
+    public void testImportedStaticFromCompanionBlockProperty() {
+      run("importedStaticFromCompanionBlockProperty.kt");
     }
 
     @Test

@@ -11,6 +11,7 @@ plugins {
 dependencies {
     testFixturesApi(testFixtures(project(":generators:test-generator")))
     testFixturesApi(testFixtures(project(":compiler:tests-integration")))
+    testFixturesApi(testFixtures(project(":compiler:jvm.tests")))
     testFixturesImplementation(project(":compiler:cli-jklib"))
     testFixturesImplementation(project(":compiler:ir.serialization.jklib"))
 
@@ -61,7 +62,7 @@ val stdlibJvmIr = configurations.create("stdlibJvmIr") {
 }
 
 dependencies {
-    stdlibJvmIr(project(":kotlin-stdlib-jklib-for-test", configuration = "distMinimalJKlib"))
+    stdlibJvmIr(project(":kotlin-stdlib-jklib-for-test", configuration = "distJKlib"))
     testRuntimeOnly(files(stdlibJvmIr))
 }
 

@@ -5,8 +5,8 @@ import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
 import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootEnvSpec
 import org.jetbrains.kotlin.gradle.targets.wasm.yarn.WasmYarnPlugin
 import org.jetbrains.kotlin.gradle.targets.wasm.yarn.WasmYarnRootEnvSpec
-import org.jetbrains.kotlin.testFederation.TestFederationInferAffectedDomainsTask
 import org.jetbrains.kotlin.testFederation.PlanTestFederationTask
+import org.jetbrains.kotlin.testFederation.TestFederationInferAffectedDomainsTask
 
 buildscript {
     /**
@@ -332,11 +332,7 @@ tasks {
     }
 
     testLifecycleTask("jvmCodegenTest", QualityGate.Master) {
-        dependsOn(":compiler:fir:fir2ir:aggregateTests")
-    }
-
-    testLifecycleTask("testsForBootstrapBuildTest", QualityGate.Master) {
-        dependsOn(":compiler:tests-common-new:test")
+        dependsOn(":compiler:jvm.tests:aggregateTests")
     }
 
     val jvmCompilerIntegrationTest = testLifecycleTask("jvmCompilerIntegrationTest", QualityGate.Master) {
@@ -347,9 +343,10 @@ tasks {
     }
 
     // === Used by Native Image builds (in a separate TC project) ===
-    testLifecycleTask("nativeImageCompilerTest", QualityGate.None) {
+    testLifecycleTask("nativeImageCompilerTest", QualityGate.Nightly) {
         dependsOn(":kotlin-compiler-native-image:nativeImageBoxTest")
         dependsOn(":kotlin-compiler-native-image:nativeImageSmokeTest")
+        dependsOn(":kotlin-compiler-native-image:nativeImageDaemonBoxTest")
     }
 
     testLifecycleTask("jsCompilerTest", QualityGate.Master) {
@@ -368,6 +365,10 @@ tasks {
 
     testLifecycleTask("jsES6InlineAnonymousFunctionsTest", QualityGate.Nightly) {
         dependsOn(":js:js.tests:jsES6InlineAnonymousFunctionsTest")
+    }
+
+    testLifecycleTask("jsES6ConstLetTest", QualityGate.Nightly) {
+        dependsOn(":js:js.tests:jsES6ConstLetTest")
     }
 
     // TODO(KT-82969): Promote to QualityGate.Nightly
@@ -521,11 +522,10 @@ tasks {
         dependsOn(":compiler:fir:raw-fir:light-tree2fir:test")
         dependsOn(":compiler:fir:raw-fir:mp-parsing2fir:test")
         dependsOn(":compiler:fir:analysis-tests:test")
-        dependsOn(":compiler:fir:analysis-tests:legacy-fir-tests:test")
     }
 
     testLifecycleTask("nightlyFirCompilerTest", QualityGate.Nightly) {
-        dependsOn(":compiler:fir:fir2ir:nightlyTests")
+        dependsOn(":compiler:jvm.tests:nightlyTests")
         dependsOn(":compiler:fastJarFSLongTests")
     }
 
@@ -650,6 +650,7 @@ tasks {
         dependsOn(":kotlin-util-klib-abi:test")
         dependsOn(":kotlinx-metadata-klib:test")
         dependsOn(":compiler:ir.validation:test")
+        dependsOn(":compiler:ir.serialization.common:test")
         dependsOn(":generators:test")
         dependsOn(":kotlin-gradle-plugin-dsl-codegen:test")
     }
@@ -690,6 +691,10 @@ tasks {
         dependsOn(":repo:auto-code-review:test")
         dependsOn(":repo:codebase-tests:test")
         dependsOn(":repo:test-runtime:test")
+    }
+
+    testLifecycleTask("codebaseTestsNightly", QualityGate.Undefined) {
+        dependsOn(":repo:codebase-tests:nightlyTests")
     }
 
     testLifecycleTask("artifactsTest", QualityGate.Master) {

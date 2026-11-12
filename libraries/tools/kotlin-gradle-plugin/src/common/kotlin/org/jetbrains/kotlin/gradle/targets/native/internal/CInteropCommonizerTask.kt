@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.build.report.metrics.BuildTimeMetric
 import org.jetbrains.kotlin.commonizer.*
 import org.jetbrains.kotlin.compilerRunner.*
 import org.jetbrains.kotlin.internal.compilerRunner.native.KotlinNativeToolRunner
+import org.jetbrains.kotlin.internal.compilerRunner.native.UsesKotlinNativeToolParallelismProbe
 import org.jetbrains.kotlin.gradle.dsl.multiplatformExtension
 import org.jetbrains.kotlin.gradle.dsl.multiplatformExtensionOrNull
 import org.jetbrains.kotlin.gradle.internal.UsesClassLoadersCachingBuildService
@@ -54,7 +55,8 @@ internal abstract class CInteropCommonizerTask
     providerFactory: ProviderFactory,
 ) : AbstractCInteropCommonizerTask(),
     UsesClassLoadersCachingBuildService,
-    UsesKotlinNativeBundleBuildService {
+    UsesKotlinNativeBundleBuildService,
+    UsesKotlinNativeToolParallelismProbe {
 
     internal class CInteropGist(
         @get:Input val identifier: CInteropIdentifier,
@@ -239,10 +241,20 @@ internal abstract class CInteropCommonizerTask
         outputDirectory.deleteRecursively()
         if (cinteropsForTarget.isEmpty()) return
 
-        GradleCliCommonizer(
-            commonizerToolRunner.get(),
-            kotlinCompilerArgumentsLogLevel.get(),
-        ).commonizeLibraries(
+        val runner = commonizerToolRunner.get()
+        val compilerArgumentsLogLevel = kotlinCompilerArgumentsLogLevel.get()
+
+        CliCommonizer { arguments ->
+            runner.runToolWithWorkers(
+                KotlinNativeToolRunner.ToolArguments(
+                    shouldRunInProcessMode = false,
+                    compilerArgumentsLogLevel = compilerArgumentsLogLevel,
+                    arguments = arguments,
+                ),
+                taskPath = path,
+                parallelismProbe = kotlinNativeToolParallelismProbe,
+            )
+        }.commonizeLibraries(
             konanHome = konanHome.get(),
             outputTargets = group.targets,
             inputLibraries = cinteropsForTarget.map { it.libraryFile.get() }.filter { it.exists() }.toSet(),

@@ -5,10 +5,10 @@
 
 package org.jetbrains.kotlin.gradle.mpp
 
-import org.gradle.api.logging.LogLevel
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.build.report.metrics.BuildAttribute
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.gradle.report.BuildReportType
 import org.jetbrains.kotlin.gradle.testbase.*
 import org.jetbrains.kotlin.gradle.util.replaceWithVersion
 import org.jetbrains.kotlin.test.TestMetadata
@@ -33,56 +33,14 @@ abstract class CommonCodeWithPlatformSymbolsITBase(
 ) : KGPBaseTest() {
     override val defaultBuildOptions: BuildOptions
         get() = super.defaultBuildOptions.copy(
-            logLevel = LogLevel.DEBUG,
+            buildReport = listOf(BuildReportType.FILE),
             isolatedProjects = when (platformType) {
                 KotlinPlatformType.js -> BuildOptions.IsolatedProjectsMode.DISABLED
                 else -> super.defaultBuildOptions.isolatedProjects
             }
-        ).withUnsafeOptimizationsForMultiplatform(false)
-
-    private fun BuildOptions.withUnsafeOptimizationsForMultiplatform(enabled: Boolean): BuildOptions = when (platformType) {
-        KotlinPlatformType.js -> copy(enableJsUnsafeIncrementalCompilationForMultiplatform = enabled)
-        KotlinPlatformType.wasm -> copy(enableWasmUnsafeIncrementalCompilationForMultiplatform = enabled)
-        else -> copy(enableJvmIncrementalCompilationOfCommonSources = enabled)
-    }
-
-    private fun BuildOptions.withoutJvmClasspathMetadata(): BuildOptions = when (platformType) {
-        KotlinPlatformType.jvm -> copy(jvmClasspathMetadata = false)
-        else -> this
-    }
+        )
 
     private val platformSourceSet = "${platformType.name}Main"
-
-    @GradleTest
-    @DisplayName("Baseline - compilation failure without hotfix")
-    @TestMetadata("kt-62686-mpp-source-set-boundary")
-    fun testBaselineForCommonSourceSetIC(gradleVersion: GradleVersion) {
-        project(
-            "kt-62686-mpp-source-set-boundary",
-            gradleVersion,
-            buildOptions = defaultBuildOptions.withUnsafeOptimizationsForMultiplatform(true).withoutJvmClasspathMetadata()
-        ) {
-            buildScriptInjection(setupBuildScript)
-
-            // initial build is good
-            build(taskToExecute) {
-                assertTasksExecuted(taskToExecute)
-            }
-
-            projectPath.resolve("src/commonMain/kotlin/riskyCode.kt").replaceWithVersion("useMemberFunctionFromExpectClass")
-
-            // common source file is recompiled, and the incorrect overload resolution happens:
-            buildAndFail(taskToExecute) {
-                assertTasksFailed(taskToExecute)
-                assertOutputContains("Return type mismatch: expected 'String', actual '${platformSourceSet}OnlyType'.")
-            }
-
-            // but changed code is valid for full compilation:
-            build("clean", taskToExecute) {
-                assertTasksExecuted(taskToExecute)
-            }
-        }
-    }
 
     @GradleTest
     @DisplayName("Use member function of an expect class that is overloaded in the actual class")
@@ -101,7 +59,7 @@ abstract class CommonCodeWithPlatformSymbolsITBase(
 
             build(taskToExecute) {
                 assertTasksExecuted(taskToExecute)
-                assertNonIncrementalCompilation(BuildAttribute.UNSAFE_INCREMENTAL_CHANGE_KT_62686)
+                assertNonIncrementalCompilationInBuildReport(BuildAttribute.UNSAFE_INCREMENTAL_CHANGE_KT_62686)
             }
         }
     }
@@ -123,7 +81,7 @@ abstract class CommonCodeWithPlatformSymbolsITBase(
 
             build(taskToExecute) {
                 assertTasksExecuted(taskToExecute)
-                assertNonIncrementalCompilation(BuildAttribute.UNSAFE_INCREMENTAL_CHANGE_KT_62686)
+                assertNonIncrementalCompilationInBuildReport(BuildAttribute.UNSAFE_INCREMENTAL_CHANGE_KT_62686)
             }
         }
     }
@@ -148,7 +106,7 @@ abstract class CommonCodeWithPlatformSymbolsITBase(
 
             build(taskToExecute) {
                 assertTasksExecuted(taskToExecute)
-                assertNonIncrementalCompilation(BuildAttribute.UNSAFE_INCREMENTAL_CHANGE_KT_62686)
+                assertNonIncrementalCompilationInBuildReport(BuildAttribute.UNSAFE_INCREMENTAL_CHANGE_KT_62686)
             }
         }
     }
@@ -173,7 +131,7 @@ abstract class CommonCodeWithPlatformSymbolsITBase(
 
             build(taskToExecute) {
                 assertTasksExecuted(taskToExecute)
-                assertNonIncrementalCompilation(BuildAttribute.UNSAFE_INCREMENTAL_CHANGE_KT_62686)
+                assertNonIncrementalCompilationInBuildReport(BuildAttribute.UNSAFE_INCREMENTAL_CHANGE_KT_62686)
             }
         }
     }

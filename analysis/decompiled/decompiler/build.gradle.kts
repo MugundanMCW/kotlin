@@ -10,11 +10,9 @@ dependencies {
     api(project(":core:deserialization.common"))
     api(project(":core:deserialization.common.jvm"))
     implementation(project(":compiler:frontend.common.jvm"))
-    implementation(project(":compiler:frontend.java"))
     implementation(project(":core:compiler.common"))
     implementation(project(":core:compiler.common.jvm"))
     implementation(project(":core:descriptors"))
-    implementation(project(":core:deserialization"))
     implementation(project(":kotlin-util-klib"))
     implementation(project(":kotlin-util-klib-metadata"))
 

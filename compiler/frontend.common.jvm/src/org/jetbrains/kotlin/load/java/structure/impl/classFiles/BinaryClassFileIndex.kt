@@ -5,7 +5,7 @@
 
 package org.jetbrains.kotlin.load.java.structure.impl.classFiles
 
-import org.jetbrains.kotlin.jvm.environment.JvmClasspathRootId
+import org.jetbrains.kotlin.jvm.environment.JvmClasspath
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 
@@ -22,6 +22,9 @@ interface BinaryClassFileIndex {
 
     /** Returns class files declaring [topLevelClassId], in classpath order. */
     fun findTopLevelClassFiles(topLevelClassId: ClassId): Collection<BinaryClassFileHandle>
+
+    /** Returns class files declaring [topLevelClassId] from roots accepted by [classpath]. */
+    fun findTopLevelClassFiles(topLevelClassId: ClassId, classpath: JvmClasspath): Collection<BinaryClassFileHandle>
 
     /**
      * The file names, without extension, of every class file directly in [packageFqName]. Names
@@ -40,8 +43,6 @@ interface BinaryClassFileIndex {
  */
 interface BinaryClassFileHandle {
     val nameWithoutExtension: String
-
-    fun isUnder(classpathRoot: JvmClasspathRootId): Boolean
 
     fun readBytes(): ByteArray
 }

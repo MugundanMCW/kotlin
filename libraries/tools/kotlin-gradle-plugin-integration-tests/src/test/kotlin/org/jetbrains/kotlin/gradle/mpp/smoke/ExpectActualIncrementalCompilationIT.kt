@@ -5,13 +5,11 @@
 
 package org.jetbrains.kotlin.gradle.mpp.smoke
 
-import org.gradle.api.logging.LogLevel
 import org.gradle.util.GradleVersion
+import org.jetbrains.kotlin.gradle.report.BuildReportType
 import org.jetbrains.kotlin.gradle.testbase.*
 import org.jetbrains.kotlin.gradle.util.replaceWithVersion
 import org.jetbrains.kotlin.test.TestMetadata
-import org.jetbrains.kotlin.testFederation.MustRunOnChangesInBuildToolsApi
-import org.jetbrains.kotlin.testFederation.MustRunOnChangesInFrontend
 import org.junit.jupiter.api.DisplayName
 import kotlin.io.path.writeText
 
@@ -23,8 +21,8 @@ import kotlin.io.path.writeText
  */
 @DisplayName("Incremental scenarios with expect/actual")
 @MppGradlePluginTests
-@MustRunOnChangesInFrontend
-@MustRunOnChangesInBuildToolsApi
+@OptIn(ImpactsAggregatePerformance::class)
+@MustRunOnChangesInAnyCompiler(reason = "This seems to test a Frontend bug; see KT-76041. This test should be moved out of KGP IT")
 class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
     override val defaultBuildOptions: BuildOptions
         get() = super.defaultBuildOptions.copy(
@@ -32,7 +30,7 @@ class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
             enableJvmIncrementalCompilationOfCommonSources = true,
             enableJsUnsafeIncrementalCompilationForMultiplatform = true,
             enableWasmUnsafeIncrementalCompilationForMultiplatform = true,
-            logLevel = LogLevel.DEBUG,
+            buildReport = listOf(BuildReportType.FILE),
         )
 
     @DisplayName("File with actual declaration needs recompiling")
@@ -55,7 +53,7 @@ class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
 
             build("assemble") {
                 assertTasksExecuted(":compileKotlinJvm", ":compileKotlinJs", ":compileKotlinNative")
-                assertIncrementalCompilation(
+                assertIncrementalCompilationInBuildReport(
                     listOf(
                         kotlinSourcesDir("jvmMain").resolve("ActualFunFoo.kt"),
                         kotlinSourcesDir("jsMain").resolve("ActualFunFoo.kt"),
@@ -83,7 +81,7 @@ class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
 
             build("assemble") {
                 assertTasksExecuted(":compileKotlinJvm", ":compileKotlinJs", ":compileKotlinNative")
-                assertIncrementalCompilation(
+                assertIncrementalCompilationInBuildReport(
                     listOf(
                         kotlinSourcesDir("jvmMain").resolve("ActualFunFoo.kt"),
                         kotlinSourcesDir("jsMain").resolve("ActualFunFoo.kt"),
@@ -111,7 +109,7 @@ class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
 
             build("assemble") {
                 assertTasksExecuted(":compileKotlinJvm", ":compileKotlinJs", ":compileKotlinNative")
-                assertIncrementalCompilation(
+                assertIncrementalCompilationInBuildReport(
                     listOf(
                         kotlinSourcesDir("jvmMain").resolve("ActualClassBar.kt"),
                         kotlinSourcesDir("jsMain").resolve("ActualClassBar.kt"),
@@ -122,6 +120,7 @@ class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("lenientMode")
     @DisplayName("Incremental compilation with lenient mode")
     @GradleTest
     fun testLenientModeIncrementalCompilation(gradleVersion: GradleVersion) {
@@ -135,7 +134,7 @@ class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
             )
 
             build("compileKotlinJvm") {
-                assertIncrementalCompilation(
+                assertIncrementalCompilationInBuildReport(
                     listOf(
                         kotlinSourcesDir("commonMain").resolve("common.kt"),
                         kotlinSourcesDir("jvmMain").resolve("jvm.kt")
@@ -150,7 +149,7 @@ class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
             )
 
             build("compileKotlinJvm") {
-                assertIncrementalCompilation(
+                assertIncrementalCompilationInBuildReport(
                     listOf(
                         kotlinSourcesDir("jvmMain").resolve("jvm2.kt")
                     ).relativizeTo(projectPath)
@@ -159,6 +158,7 @@ class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("lenientMode")
     @DisplayName("Incremental compilation with lenient mode 2")
     @GradleTest
     fun testLenientModeIncrementalCompilation2(gradleVersion: GradleVersion) {
@@ -185,7 +185,7 @@ class ExpectActualIncrementalCompilationIT : KGPBaseTest() {
             )
 
             build("compileKotlinJvm") {
-                assertIncrementalCompilation(
+                assertIncrementalCompilationInBuildReport(
                     listOf(
                         kotlinSourcesDir("commonMain").resolve("common.kt"),
                         kotlinSourcesDir("commonMain").resolve("common2.kt"),

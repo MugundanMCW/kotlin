@@ -572,12 +572,21 @@ enum class LanguageFeature(
 
     // 2.6
 
+    CallableReferencesWithBoundCompanionDontWinOverDefaultImports(sinceVersion = KOTLIN_2_6, "KT-86000"),
     ReportReificationProblemsInDnnAndFlexible(sinceVersion = KOTLIN_2_6, enabledInProgressiveMode = true, "KTLC-399"),
     ForbidSamConstructorCallsWithMissingDependencySupertype(sinceVersion = KOTLIN_2_6, enabledInProgressiveMode = true, "KT-81075"),
     ExplicitContextArguments(sinceVersion = KOTLIN_2_6, issue = "KT-81684"),
     ForbidJavaClassPropertyReferences(sinceVersion = KOTLIN_2_6, enabledInProgressiveMode = true, "KTLC-375"),
     ForbidNonTopLevelEagerInitialization(sinceVersion = KOTLIN_2_6, enabledInProgressiveMode = true, "KT-89476"),
     ReportSubclassCantCallCompanionProtectedNonStaticWithGenerics(sinceVersion = KOTLIN_2_6, enabledInProgressiveMode = true, "KTLC-412"),
+    AvoidStarProjectingSupertypeOfRecursiveCapturedTypes(sinceVersion = KOTLIN_2_6, "KT-88674"),
+    ConsiderUseSiteRecursiveBoundsOnCapturedTypes(sinceVersion = KOTLIN_2_6, "KT-90176"),
+    ExplicitInlineValueClassesSyntaxRequiredOnAllPlatforms(KOTLIN_2_6, enabledInProgressiveMode = true, issue = "KT-89772") {
+        context(context: CrossFeatureChecksResultsCollector)
+        override fun crossFeatureChecks() {
+            checkEnabledLaterThan(ExplicitInlineValueClassesSyntax)
+        }
+    },
     ConcurrentMapPurelyImplemented(sinceVersion = KOTLIN_2_6, enabledInProgressiveMode = true, "KTLC-416"),
     ForbidUselessTypeArgumentsIn26(sinceVersion = KOTLIN_2_6, enabledInProgressiveMode = true, "KTLC-390"),
     EnforceMissingNamedArgumentsOnJavaAnnotation(sinceVersion = KOTLIN_2_6, enabledInProgressiveMode = true, "KTLC-418"),
@@ -681,8 +690,6 @@ enum class LanguageFeature(
     },
     ProperFieldAccessGenerationForFieldAccessShadowedByKotlinProperty(sinceVersion = null, "KT-56386", enabledInLatestLVTests = false),
     ContextSensitiveResolutionUsingExpectedType(sinceVersion = null, issue = "KT-16768", enabledInLatestLVTests = true),
-    DisableWarningsForValueBasedJavaClasses(sinceVersion = null, "KT-70722", enabledInLatestLVTests = false),
-    DisableWarningsForIdentitySensitiveOperationsOnValueClassesAndPrimitives(sinceVersion = null, "KT-70722", enabledInLatestLVTests = false),
     ExportKlibToOlderAbiVersion(sinceVersion = null, forcesPreReleaseBinaries = true, issue = "KT-76131", enabledInLatestLVTests = false),
     JvmLoadAnnotationsOnAnnotationProperties(sinceVersion = null, "KT-22463", enabledInLatestLVTests = false),
     RichErrors(sinceVersion = null, "KT-68296", enabledInLatestLVTests = true, forcesPreReleaseBinaries = true),
@@ -693,7 +700,6 @@ enum class LanguageFeature(
             checkEnabledNotEarlierThan(NameBasedDestructuring)
         }
     },
-    AllowSmartCastsOnValueClassUnderlyingProperties(sinceVersion = null, "KT-88589", enabledInLatestLVTests = true),
     JsExportingSuspendLambdas(sinceVersion = null, "KT-80188", enabledInLatestLVTests = false),
     LateinitVals(sinceVersion = null, "KT-28413", forcesPreReleaseBinaries = true, enabledInLatestLVTests = false),
 

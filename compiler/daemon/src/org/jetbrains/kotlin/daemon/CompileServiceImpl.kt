@@ -266,7 +266,9 @@ abstract class CompileServiceImplBase(
             )
         )
         try {
-            if (!runFile.createNewFile()) throw Exception("createNewFile returned false")
+            val secret = DaemonConnectionAuth.generateSecret()
+            createRunFileWithSecret(runFile, secret)
+            DaemonConnectionAuth.setOwnSecret(secret)
         } catch (e: Throwable) {
             throw IllegalStateException("Unable to create run file '${runFile.absolutePath}'", e)
         }
@@ -367,13 +369,14 @@ abstract class CompileServiceImplBase(
         val targetPlatform = compilationOptions.targetPlatform
         log.info("Starting compilation with args: " + compilerArguments.joinToString(" "))
 
-        @Suppress("UNCHECKED_CAST")
-        val compiler = when (targetPlatform) {
+        val compilerForPlatform = when (targetPlatform) {
             CompileService.TargetPlatform.JVM -> K2JVMCompiler()
             CompileService.TargetPlatform.JS -> K2JSCompiler()
             CompileService.TargetPlatform.WASM -> KotlinWasmCompiler()
             CompileService.TargetPlatform.METADATA -> KotlinMetadataCompiler()
-        } as CLICompiler<CommonCompilerArguments>
+        }
+        @Suppress("UNCHECKED_CAST")
+        val compiler = compilerForPlatform as CLICompiler<CommonCompilerArguments>
 
         val k2PlatformArgs = compiler.createArguments()
         parseCommandLineArguments(compilerArguments.asList(), k2PlatformArgs)
@@ -786,7 +789,7 @@ abstract class CompileServiceImplBase(
                     usePreciseJavaTracking = verifiedPreciseJavaTracking
                 ),
                 compilationCanceledStatus = compilationCanceledStatus,
-                generateCompilerRefIndex = incrementalCompilationOptions.generateCompilerRefIndex,
+                compilerRefIndexDirectory = incrementalCompilationOptions.compilerRefIndexDirectory,
                 lookupTrackerDelegate = lookupTracker ?: LookupTracker.DO_NOTHING,
             )
         } else {
@@ -800,7 +803,7 @@ abstract class CompileServiceImplBase(
                     usePreciseJavaTracking = verifiedPreciseJavaTracking
                 ),
                 compilationCanceledStatus = compilationCanceledStatus,
-                generateCompilerRefIndex = incrementalCompilationOptions.generateCompilerRefIndex,
+                compilerRefIndexDirectory = incrementalCompilationOptions.compilerRefIndexDirectory,
                 lookupTrackerDelegate = lookupTracker ?: LookupTracker.DO_NOTHING,
             )
         }

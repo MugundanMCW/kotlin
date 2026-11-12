@@ -2663,7 +2663,7 @@
                             "introducedVersion": "2.5.0",
                             "stabilizedVersion": null,
                             "deprecatedVersion": null,
-                            "removedVersion": null
+                            "removedVersion": "2.5.20"
                         },
                         "argumentType": {
                             "type": "org.jetbrains.kotlin.arguments.dsl.types.BooleanType",
@@ -6745,7 +6745,7 @@
                             "introducedVersion": "1.7.0",
                             "stabilizedVersion": null,
                             "deprecatedVersion": "2.4.20",
-                            "removedVersion": null
+                            "removedVersion": "2.5.20"
                         },
                         "argumentType": {
                             "type": "org.jetbrains.kotlin.arguments.dsl.types.BooleanType",
@@ -14087,7 +14087,7 @@
                                                         },
                                                         "delimiter": null,
                                                         "affectsCompilationOutcome": true,
-                                                        "restrictedToCompilerPhase": "KLIB_COMPILATION",
+                                                        "restrictedToCompilerPhase": null,
                                                         "valueType": {
                                                             "type": "org.jetbrains.kotlin.arguments.dsl.types.BooleanType",
                                                             "isNullable": {
@@ -14252,6 +14252,51 @@
                                                             },
                                                             "defaultValue": {
                                                                 "current": null,
+                                                                "valueInVersions": []
+                                                            }
+                                                        },
+                                                        "deprecatedMessage": null
+                                                    },
+                                                    {
+                                                        "name": "Xes-const-let",
+                                                        "shortName": null,
+                                                        "deprecatedName": null,
+                                                        "description": {
+                                                            "current": "Variables in generated JavaScript code are declared with 'let' or 'const' keywords instead of 'var'",
+                                                            "valueInVersions": []
+                                                        },
+                                                        "delimiter": null,
+                                                        "affectsCompilationOutcome": true,
+                                                        "restrictedToCompilerPhase": "BACKEND_COMPILATION",
+                                                        "valueType": {
+                                                            "type": "org.jetbrains.kotlin.arguments.dsl.types.BooleanType",
+                                                            "isNullable": {
+                                                                "current": false,
+                                                                "valueInVersions": []
+                                                            },
+                                                            "defaultValue": {
+                                                                "current": false,
+                                                                "valueInVersions": []
+                                                            }
+                                                        },
+                                                        "valueDescription": {
+                                                            "current": null,
+                                                            "valueInVersions": []
+                                                        },
+                                                        "releaseVersionsMetadata": {
+                                                            "introducedVersion": "2.5.20",
+                                                            "stabilizedVersion": null,
+                                                            "deprecatedVersion": null,
+                                                            "removedVersion": null
+                                                        },
+                                                        "argumentType": {
+                                                            "type": "org.jetbrains.kotlin.arguments.dsl.types.BooleanType",
+                                                            "isNullable": {
+                                                                "current": false,
+                                                                "valueInVersions": []
+                                                            },
+                                                            "defaultValue": {
+                                                                "current": false,
                                                                 "valueInVersions": []
                                                             }
                                                         },

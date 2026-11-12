@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.analysis.test.framework.test.configurators.TestModul
 import org.jetbrains.kotlin.analysis.test.framework.test.configurators.AnalysisSessionMode;
 import org.jetbrains.kotlin.analysis.test.framework.test.configurators.AnalysisApiMode;
 import org.jetbrains.kotlin.analysis.test.framework.services.TargetPlatformEnum;
-import org.jetbrains.kotlin.analysis.api.impl.base.test.cases.symbols.AbstractSymbolByReferenceTest;
+import org.jetbrains.kotlin.analysis.api.fir.test.cases.symbols.AbstractSymbolByReferenceTest;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -192,6 +192,24 @@ public class FirIdeNormalAnalysisSourceLikeModuleSymbolByReferenceTestGenerated 
   @TestMetadata("contextParametersInTypesLibrary.kt")
   public void testContextParametersInTypesLibrary() {
     run("contextParametersInTypesLibrary.kt");
+  }
+
+  @Test
+  @TestMetadata("danglingTypeConstraintInClass.kt")
+  public void testDanglingTypeConstraintInClass() {
+    run("danglingTypeConstraintInClass.kt");
+  }
+
+  @Test
+  @TestMetadata("danglingTypeConstraintSubject.kt")
+  public void testDanglingTypeConstraintSubject() {
+    run("danglingTypeConstraintSubject.kt");
+  }
+
+  @Test
+  @TestMetadata("danglingTypeConstraintUsage.kt")
+  public void testDanglingTypeConstraintUsage() {
+    run("danglingTypeConstraintUsage.kt");
   }
 
   @Test
@@ -750,6 +768,18 @@ public class FirIdeNormalAnalysisSourceLikeModuleSymbolByReferenceTestGenerated 
   @TestMetadata("valueClassCompanionBlockVariableLibrary.kt")
   public void testValueClassCompanionBlockVariableLibrary() {
     run("valueClassCompanionBlockVariableLibrary.kt");
+  }
+
+  @Test
+  @TestMetadata("valueClassCompanionExtensionFunctionLibrary.kt")
+  public void testValueClassCompanionExtensionFunctionLibrary() {
+    run("valueClassCompanionExtensionFunctionLibrary.kt");
+  }
+
+  @Test
+  @TestMetadata("valueClassCompanionExtensionVariableLibrary.kt")
+  public void testValueClassCompanionExtensionVariableLibrary() {
+    run("valueClassCompanionExtensionVariableLibrary.kt");
   }
 
   @Test

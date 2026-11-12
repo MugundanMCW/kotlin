@@ -15,7 +15,7 @@ import org.jetbrains.kotlin.analysis.test.framework.test.configurators.TestModul
 import org.jetbrains.kotlin.analysis.test.framework.test.configurators.AnalysisSessionMode;
 import org.jetbrains.kotlin.analysis.test.framework.test.configurators.AnalysisApiMode;
 import org.jetbrains.kotlin.analysis.test.framework.services.TargetPlatformEnum;
-import org.jetbrains.kotlin.analysis.api.impl.base.test.cases.components.javaInteroperabilityComponent.AbstractIsPrimitiveBackedTest;
+import org.jetbrains.kotlin.analysis.api.fir.test.cases.components.javaInteroperabilityComponent.AbstractIsPrimitiveBackedTest;
 import org.jetbrains.kotlin.test.TestMetadata;
 import org.junit.jupiter.api.Test;
 
@@ -131,5 +131,17 @@ public class FirStandaloneNormalAnalysisSourceModuleIsPrimitiveBackedTestGenerat
   @TestMetadata("regularClass.kt")
   public void testRegularClass() {
     run("regularClass.kt");
+  }
+
+  @Test
+  @TestMetadata("uInt.kt")
+  public void testUInt() {
+    run("uInt.kt");
+  }
+
+  @Test
+  @TestMetadata("uIntJs.kt")
+  public void testUIntJs() {
+    run("uIntJs.kt");
   }
 }

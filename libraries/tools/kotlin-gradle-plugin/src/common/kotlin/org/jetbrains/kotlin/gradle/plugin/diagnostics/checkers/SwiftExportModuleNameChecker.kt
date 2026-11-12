@@ -13,7 +13,7 @@ import org.jetbrains.kotlin.gradle.plugin.diagnostics.KotlinToolingDiagnosticsCo
 import org.jetbrains.kotlin.gradle.plugin.getExtension
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.SwiftExportDSLConstants
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.SwiftExportExtension
-import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.normalizedSwiftExportModuleName
+import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.validateSwiftExportModuleIdentifier
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.swiftexport.internal.validateSwiftExportModuleName
 import org.jetbrains.kotlin.gradle.plugin.mpp.export.EXPORT_EXTENSION_NAME
 import org.jetbrains.kotlin.gradle.plugin.mpp.export.ExportExtension
@@ -26,7 +26,8 @@ internal object SwiftExportModuleNameChecker : KotlinGradleProjectChecker {
         multiplatformExtension?.getExtension<ExportExtension>(EXPORT_EXTENSION_NAME)
             ?.swiftExportConfiguration
             ?.moduleName?.orNull?.let {
-                collector.validateSwiftExportModuleName(project, it)
+                collector.validateSwiftExportModuleIdentifier(project, it, project.path)
+                collector.validateSwiftExportModuleName(project, it, project.path)
             }
 
         val legacyExtension = multiplatformExtension?.getExtension<SwiftExportExtension>(
@@ -34,12 +35,14 @@ internal object SwiftExportModuleNameChecker : KotlinGradleProjectChecker {
         ) ?: return
 
         legacyExtension.moduleName.orNull?.let {
-            collector.validateSwiftExportModuleName(project, it)
+            collector.validateSwiftExportModuleIdentifier(project, it, project.path)
+            collector.validateSwiftExportModuleName(project, it, project.path)
         }
 
         legacyExtension.exportedModules.orNull?.forEach { module ->
             module.moduleName.orNull?.let {
-                collector.validateSwiftExportModuleName(project, it)
+                collector.validateSwiftExportModuleIdentifier(project, it, module.name)
+                collector.validateSwiftExportModuleName(project, it, module.name)
             }
         }
     }

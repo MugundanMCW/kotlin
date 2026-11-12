@@ -1,6 +1,5 @@
 package org.jetbrains.kotlin.gradle
 
-import org.gradle.api.logging.LogLevel
 import org.gradle.api.logging.configuration.WarningMode
 import org.gradle.util.GradleVersion
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
@@ -25,6 +24,7 @@ import kotlin.io.path.invariantSeparatorsPathString
 @MustRunOnChangesInGradle
 class SimpleKotlinGradleIT : KGPBaseTest() {
 
+    @TestMetadata("simpleProject")
     @GradleTest
     @DisplayName("On second run common tasks should be up-to-date")
     @MustRunOnChangesInBuildToolsApi
@@ -32,7 +32,6 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         project(
             projectName = "simpleProject",
             gradleVersion = gradleVersion,
-            buildOptions = defaultBuildOptions.copy(logLevel = LogLevel.DEBUG),
         ) {
             build("compileDeployKotlin", "build") {
                 assertOutputContains("Finished executing kotlin compiler using ${KotlinCompilerExecutionStrategy.DAEMON} strategy")
@@ -57,6 +56,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("suppressWarnings")
     @GradleTest
     @DisplayName("Plugin allows to suppress all warnings")
     @MustRunOnChangesInFrontend
@@ -69,6 +69,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("warningLevelUsage")
     @GradleTest
     @DisplayName("Warnings with set warningLevel are reported")
     @MustRunOnChangesInFrontend
@@ -85,6 +86,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("customSrcDir")
     @GradleTest
     @DisplayName("Plugin should allow to add custom Kotlin directory")
     fun testKotlinCustomDirectory(gradleVersion: GradleVersion) {
@@ -93,6 +95,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("additionalJavaSrc")
     @GradleTest
     @DisplayName("Plugin should correctly handle additional java source directories")
     fun testKotlinExtraJavaSrc(gradleVersion: GradleVersion) {
@@ -101,6 +104,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("languageVersion")
     @GradleTest
     @DisplayName("Using newer language features with older api level should fail the build")
     @MustRunOnChangesInFrontend
@@ -112,6 +116,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("jvmTarget")
     @GradleTest
     @DisplayName("Compilation should fail on unknown JVM target")
     fun testJvmTarget(gradleVersion: GradleVersion) {
@@ -122,6 +127,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("moduleName")
     @GradleTest
     @DisplayName("Should produce '.kotlin_module' file with specified name")
     fun testModuleName(gradleVersion: GradleVersion) {
@@ -134,6 +140,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("destinationDirReferencedDuringEvaluation")
     @GradleTest
     @DisplayName("Compile task destination dir should be configured on configuration phase")
     fun testDestinationDirReferencedDuringEvaluation(gradleVersion: GradleVersion) {
@@ -144,6 +151,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("kotlinProject")
     @GradleTest
     @DisplayName("Plugin correctly handle redefined build dir location")
     fun testBuildDirLazyEvaluation(gradleVersion: GradleVersion) {
@@ -161,6 +169,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("groovyInterop")
     @GradleTest
     @DisplayName("Should correctly work with Groovy lang modules")
     fun testGroovyInterop(gradleVersion: GradleVersion) {
@@ -196,6 +205,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("scalaInterop")
     @GradleTest
     @DisplayName("Should correctly work with Scala lang modules")
     fun testScalaInterop(gradleVersion: GradleVersion) {
@@ -207,6 +217,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("buildSrcUsingKotlinCompilationAndKotlinPlugin")
     @GradleTest
     @DisplayName("Should not produce kotlin-stdlib version conflict on Kotlin files compilation in 'buildSrc' module")
     internal fun testKotlinDslStdlibVersionConflict(gradleVersion: GradleVersion) {
@@ -235,6 +246,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @DisplayName("Changing compile task destination directory does not break test compilation")
     @GradleTest
     internal fun customDestinationDir(gradleVersion: GradleVersion) {
@@ -269,6 +281,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @DisplayName("Default jar content should not contain duplicates")
     @GradleTest
     internal fun defaultJarContent(gradleVersion: GradleVersion) {
@@ -285,6 +298,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("simpleProject")
     @Disabled("KT-58223: Currently is not used and we should start using it after working on followup issues")
     @DisplayName("Possible to override kotlin.user.home location")
     @GradleTest
@@ -313,6 +327,7 @@ class SimpleKotlinGradleIT : KGPBaseTest() {
         }
     }
 
+    @TestMetadata("kotlinProjectWithBuildSrc")
     @GradleTest
     fun testKotlinCompilerEmbeddable(gradleVersion: GradleVersion) {
         project("kotlinProjectWithBuildSrc", gradleVersion) {

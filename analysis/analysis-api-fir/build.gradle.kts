@@ -21,9 +21,6 @@ dependencies {
     implementation(project(":compiler:backend.common.jvm"))
     implementation(project(":compiler:ir.tree"))
     implementation(project(":compiler:cli-base"))
-    implementation(project(":compiler:frontend"))
-    implementation(project(":compiler:frontend.java"))
-    implementation(project(":compiler:ir.psi2ir"))
     api(project(":compiler:fir:entrypoint"))
     api(project(":analysis:low-level-api-fir"))
     api(project(":analysis:analysis-api"))
@@ -45,6 +42,8 @@ dependencies {
     testFixturesApi(testFixtures(project(":compiler:test-infrastructure-utils")))
     testFixturesApi(testFixtures(project(":compiler:test-infrastructure")))
     testFixturesImplementation(testFixtures(project(":compiler:tests-common-new")))
+    testFixturesImplementation(project(":core:error.handling"))
+    testFixturesImplementation(project(":compiler:psi:psi-utils"))
     testFixturesImplementation(project(":analysis:decompiled:light-classes-for-decompiled"))
 
     testFixturesImplementation(kotlinTest("junit5"))

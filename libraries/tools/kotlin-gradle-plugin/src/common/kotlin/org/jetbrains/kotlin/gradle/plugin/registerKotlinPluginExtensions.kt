@@ -58,9 +58,10 @@ import org.jetbrains.kotlin.gradle.targets.wasm.WasmBinaryPreparationSetupAction
 import org.jetbrains.kotlin.gradle.targets.wasm.WasmBinaryTransformRegisteringSetupAction
 import org.jetbrains.kotlin.gradle.targets.wasm.component.internal.WitPreparationSetupAction
 import org.jetbrains.kotlin.gradle.targets.wasm.component.internal.WitTransformRegisteringSetupAction
-import org.jetbrains.kotlin.gradle.targets.web.npm.shared.PublishSharedPackageJsonSideEffect
+import org.jetbrains.kotlin.gradle.targets.web.npm.shared.SetupNpmDependencyReportSideEffect
 import org.jetbrains.kotlin.gradle.tooling.RegisterBuildKotlinToolingMetadataTask
 import org.jetbrains.kotlin.gradle.utils.RegisterIsAllGradleProjectsEvaluatedListener
+import org.jetbrains.kotlin.internal.compilerRunner.native.KotlinNativeToolParallelismLimitSetupAction
 
 /**
  * Active Extensions (using the [KotlinGradlePluginExtensionPoint] infrastructure) will be registered here by the Kotlin Gradle Plugin.
@@ -127,6 +128,7 @@ internal fun Project.registerKotlinPluginExtensions() {
             register(project, UklibConsumptionSetupAction)
             register(project, KotlinMetadataCompilationTargetPlatformConfiguration)
             register(project, SetupKotlinArchiveAction)
+            register(project, KotlinNativeToolParallelismLimitSetupAction)
         }
 
     }
@@ -148,9 +150,9 @@ internal fun Project.registerKotlinPluginExtensions() {
         register(project, ConfigureNonPackedKlibConsumingSideEffect)
         register(project, WasmBinaryPreparationSetupAction)
         register(project, ConfigureKotlinPlaywrightTestRunner)
-        register(project, PublishSharedPackageJsonSideEffect)
         register(project, WitTransformRegisteringSetupAction)
         register(project, WitPreparationSetupAction)
+        register(project, SetupNpmDependencyReportSideEffect)
     }
 
     KotlinCompilationSideEffect.extensionPoint.apply {

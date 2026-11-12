@@ -47,6 +47,7 @@ import org.jetbrains.kotlin.analysis.api.standalone.fir.declarations.KotlinStand
 import org.jetbrains.kotlin.analysis.api.standalone.fir.declarations.KotlinStandaloneJvmDependenciesIndex
 import org.jetbrains.kotlin.analysis.api.standalone.fir.java.KotlinStandaloneJavaModuleAccessibilityChecker
 import org.jetbrains.kotlin.analysis.api.standalone.fir.java.KotlinStandaloneJavaModuleAnnotationsProvider
+import org.jetbrains.kotlin.analysis.api.standalone.fir.projectStructure.StandaloneProjectFactory.registerJavaPsiFacade
 import org.jetbrains.kotlin.analysis.api.standalone.projectStructure.StandaloneLibraryScopeConstructionMode
 import org.jetbrains.kotlin.analysis.decompiler.psi.BuiltinsVirtualFileProvider
 import org.jetbrains.kotlin.analysis.decompiler.stub.file.ClsKotlinBinaryClassCache
@@ -231,7 +232,7 @@ object StandaloneProjectFactory {
         // Analysis API java module resolver), but it's preferable over exposing `JavaModuleResolver` to all platforms. Furthermore, we can
         // still benefit from the common Analysis API implementation, for example its caching for Java module annotations.
         //
-        // Note that the registered `JavaModuleResolver` will still be the `KaBaseJavaModuleResolver` registered by the Analysis API engine,
+        // Note that the registered `JavaModuleResolver` will still be the `KaFirJavaModuleResolver` registered by the Analysis API engine,
         // not `CliJavaModuleResolver`.
         val delegateJavaModuleResolver = CliJavaModuleResolver(
             javaModuleGraph,
@@ -505,7 +506,7 @@ object StandaloneProjectFactory {
         libraryRoots: List<JavaRoot>,
         languageVersionSettings: LanguageVersionSettings = latestLanguageVersionSettings,
     ): (GlobalSearchScope) -> JvmPackagePartProvider = { scope ->
-        JvmPackagePartProvider(languageVersionSettings, scope).apply {
+        JvmPackagePartProvider(languageVersionSettings) { it in scope }.apply {
             addRoots(libraryRoots, createStubConfigurationForReporting())
         }
     }

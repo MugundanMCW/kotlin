@@ -17,11 +17,11 @@ import org.gradle.api.attributes.Attribute
 import org.gradle.api.attributes.Category
 import org.gradle.api.attributes.Usage
 import org.gradle.api.internal.artifacts.DefaultProjectComponentIdentifier
+import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.bundling.Zip
 import org.gradle.util.Path
 import org.jetbrains.kotlin.gradle.InternalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.npm.npmDependenciesCollector
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.categoryByName
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinUsages
@@ -35,13 +35,18 @@ import org.jetbrains.kotlin.gradle.plugin.usesPlatformOf
 import org.jetbrains.kotlin.gradle.targets.js.internal.jsToolingProject
 import org.jetbrains.kotlin.gradle.targets.js.ir.KotlinJsIrCompilation
 import org.jetbrains.kotlin.gradle.targets.js.ir.KotlinJsIrTarget
+import org.jetbrains.kotlin.gradle.targets.js.ir.npmDependencies
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin.Companion.kotlinNodeJsRootExtension
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin.Companion.kotlinNpmResolutionManager
 import org.jetbrains.kotlin.gradle.targets.js.npm.*
 import org.jetbrains.kotlin.gradle.targets.js.npm.tasks.KotlinPackageJsonTask
 import org.jetbrains.kotlin.gradle.targets.js.webTargetVariant
+import org.jetbrains.kotlin.gradle.targets.web.npm.ObsoleteNpmDependencyModel
 import org.jetbrains.kotlin.gradle.tasks.registerTask
-import org.jetbrains.kotlin.gradle.utils.*
+import org.jetbrains.kotlin.gradle.utils.createConsumable
+import org.jetbrains.kotlin.gradle.utils.createResolvable
+import org.jetbrains.kotlin.gradle.utils.currentBuild
+import org.jetbrains.kotlin.gradle.utils.setInvisibleIfSupported
 import java.io.Serializable
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootPlugin.Companion.kotlinNodeJsRootExtension as wasmKotlinNodeJsRootExtension
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootPlugin.Companion.kotlinNpmResolutionManager as wasmKotlinNpmResolutionManager
@@ -58,6 +63,7 @@ import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootPlugin.Comp
  *
  * See [KotlinNpmResolutionManager] for details about resolution process.
  */
+@ObsoleteNpmDependencyModel
 class KotlinCompilationNpmResolver(
     val projectResolver: KotlinProjectNpmResolver,
     val compilation: KotlinJsIrCompilation,
@@ -149,7 +155,7 @@ class KotlinCompilationNpmResolver(
             return _compilationNpmResolution ?: run {
                 val visitor = ConfigurationVisitor()
                 visitor.visit(aggregatedConfiguration)
-                visitor.toPackageJsonProducer(npmDependenciesFromCollector)
+                visitor.toPackageJsonProducer(npmDependenciesFromCollector.get())
             }.also {
                 _compilationNpmResolution = it
             }
@@ -159,15 +165,11 @@ class KotlinCompilationNpmResolver(
      * npm dependencies declared via the npm dependencies collector
      * of all source sets of this [compilation] and its associated compilations.
      */
-    private val npmDependenciesFromCollector: Set<NpmDependencyDeclaration>
-        get() {
-            val compilations = listOf(compilation) + compilation.allAssociatedCompilations
-            return compilations
-                .flatMap { it.allKotlinSourceSets }
-                .flatMap { sourceSet ->
-                    sourceSet.npmDependenciesCollector.npmDependencies.get().map { it.toNpmDependencyDeclaration() }
-                }.toSet()
-        }
+    private val npmDependenciesFromCollector: Provider<Set<NpmDependencyDeclaration>>
+        get() =
+            compilation.npmDependencies().map { deps ->
+                deps.map { it.toNpmDependencyDeclaration().get() }.toSet()
+            }
 
     @Synchronized
     fun close(): KotlinCompilationNpmResolution? {
@@ -376,6 +378,7 @@ class KotlinCompilationNpmResolver(
     private fun ProjectComponentIdentifier.isCompositeBuildId(): Boolean =
         this !in project.currentBuild
 
+    @ObsoleteNpmDependencyModel
     companion object {
         val publicPackageJsonAttribute: Attribute<String> = Attribute.of(
             "org.jetbrains.kotlin.js.public.package.json",

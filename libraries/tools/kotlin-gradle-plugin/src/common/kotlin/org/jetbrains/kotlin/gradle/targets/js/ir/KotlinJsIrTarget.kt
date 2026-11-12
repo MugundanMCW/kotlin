@@ -24,14 +24,15 @@ import org.jetbrains.kotlin.gradle.targets.js.*
 import org.jetbrains.kotlin.gradle.targets.js.dsl.*
 import org.jetbrains.kotlin.gradle.targets.js.internal.jsToolingProject
 import org.jetbrains.kotlin.gradle.targets.js.ir.KotlinJsIrTargetConfigurator.Companion.configureJsDefaultOptions
-import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin.Companion.kotlinNodeJsRootExtension
+import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmResolverPlugin
 import org.jetbrains.kotlin.gradle.targets.js.typescript.KotlinJsDtsGenerationTask
 import org.jetbrains.kotlin.gradle.targets.js.typescript.TypeScriptValidationTask
-import org.jetbrains.kotlin.gradle.targets.wasm.binaryen.BinaryenExec
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsPlugin
 import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootPlugin
 import org.jetbrains.kotlin.gradle.targets.wasm.npm.WasmNpmResolverPlugin
+import org.jetbrains.kotlin.gradle.targets.web.WebIsolatedProjectsSupport
+import org.jetbrains.kotlin.gradle.targets.web.webIsolatedProjectsSupport
 import org.jetbrains.kotlin.gradle.tasks.locateOrRegisterTask
 import org.jetbrains.kotlin.gradle.tasks.registerTask
 import org.jetbrains.kotlin.gradle.utils.*
@@ -39,7 +40,6 @@ import org.jetbrains.kotlin.util.capitalizeDecapitalize.capitalizeAsciiOnly
 import org.jetbrains.kotlin.util.capitalizeDecapitalize.toLowerCaseAsciiOnly
 import org.jetbrains.kotlin.utils.addIfNotNull
 import javax.inject.Inject
-import org.jetbrains.kotlin.gradle.targets.wasm.nodejs.WasmNodeJsRootPlugin.Companion.kotlinNodeJsRootExtension as wasmKotlinNodeJsRootExtension
 
 internal fun ObjectFactory.KotlinJsIrTarget(
     project: Project,
@@ -170,10 +170,21 @@ internal constructor(
     }
 
     private val commonLazyDelegate = lazy {
-        webTargetVariant(
-            { NpmResolverPlugin.apply(project) },
-            { WasmNpmResolverPlugin.apply(project) },
-        )
+        when (project.webIsolatedProjectsSupport) {
+            WebIsolatedProjectsSupport.Off ->
+                webTargetVariant(
+                    { NpmResolverPlugin.apply(project) },
+                    { WasmNpmResolverPlugin.apply(project) },
+                )
+
+            WebIsolatedProjectsSupport.Preview ->
+                // Per-project Node.js provisioning (`kotlinNodeJsSpec`) is compatible with Isolated Projects.
+                // With Off it is applied transitively by the resolver plugins, so apply it directly.
+                webTargetVariant(
+                    { NodeJsPlugin.apply(project) },
+                    { WasmNodeJsPlugin.apply(project) },
+                )
+        }
         compilations.all { compilation ->
             compilation.binaries
                 .withType(JsIrBinary::class.java)
@@ -196,12 +207,7 @@ internal constructor(
     ): TaskProvider<TypeScriptValidationTask> {
         val compilation = binary.compilation
         return project.registerTask(binary.validateGeneratedTsTaskName, listOf(compilation)) {
-            it.versions.value(
-                compilation.webTargetVariant(
-                    { project.jsToolingProject().kotlinNodeJsRootExtension.versions },
-                    { project.jsToolingProject().wasmKotlinNodeJsRootExtension.versions },
-                )
-            ).disallowChanges()
+            it.versions.value(compilation.npmVersions()).disallowChanges()
             it.inputDir.set(inputDirectory)
             it.validationStrategy.set(
                 when (binary.mode) {
@@ -240,7 +246,9 @@ internal constructor(
             commonLazy
         } else {
             WasmNodeJsPlugin.apply(project)
-            WasmNodeJsRootPlugin.apply(project.jsToolingProject())
+            if (project.webIsolatedProjectsSupport == WebIsolatedProjectsSupport.Off) {
+                WasmNodeJsRootPlugin.apply(project.jsToolingProject())
+            }
         }
 
         addSubTarget(KotlinNodeJsIr::class.java) {
@@ -363,15 +371,15 @@ internal constructor(
         val configurations = project.configurations
 
         return project.locateOrRegisterTask<KotlinJsDtsGenerationTask>(binary.dtsGenerationTaskName) { task ->
-            KotlinJsCompilerOptionsHelper.syncOptionsAsConvention(
-                linkTask.get().compilerOptions,
-                task.linkCompilerOptions,
+            task.klibs.from(
+                binary.compilation.compileTaskProvider.flatMap { it.libraries.elements },
+                binary.compilation.compileTaskProvider.map { it.destinationDirectory }
             )
-            task.klibs.from(linkTask.map { it.libraries })
+            KotlinJsCompilerOptionsHelper.syncOptionsAsConvention(linkTask.get().compilerOptions, task.linkCompilerOptions)
+            task.linkFreeCompilerArgs.set(linkTask.flatMap { it.enhancedFreeCompilerArgs })
             task.entryModule.set(linkTask.flatMap { it.entryModule })
-            task.granularity.set(linkTask.map { it.outputGranularity })
+            task.granularity.set(propertiesProvider.jsIrOutputGranularity)
             task.kotlinBuildToolsApiClasspath.from(configurations.named(BUILD_TOOLS_API_CLASSPATH_CONFIGURATION_NAME))
-
             task.outputDirectory.set(binary.outputDirBase.map { it.dir(KotlinJsDtsGenerationTask.OUTPUT_DIRECTORY_NAME) })
         }
     }

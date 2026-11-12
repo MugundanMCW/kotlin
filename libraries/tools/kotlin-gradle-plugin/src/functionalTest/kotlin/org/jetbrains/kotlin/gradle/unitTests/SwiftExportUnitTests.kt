@@ -8,6 +8,7 @@
 package org.jetbrains.kotlin.gradle.unitTests
 
 import com.android.build.api.variant.impl.capitalizeFirstChar
+import org.gradle.api.InvalidUserCodeException
 import org.gradle.api.NamedDomainObjectCollection
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.api.tasks.CacheableTask
@@ -18,6 +19,9 @@ import org.jetbrains.kotlin.gradle.dsl.multiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider
 import org.jetbrains.kotlin.gradle.plugin.diagnostics.KotlinToolingDiagnostics
+import org.jetbrains.kotlin.gradle.plugin.diagnostics.KotlinToolingDiagnosticsSeverity.FATAL
+import org.jetbrains.kotlin.gradle.plugin.diagnostics.ToolingDiagnostic
+import org.jetbrains.kotlin.gradle.plugin.diagnostics.ToolingDiagnosticFactory
 import org.jetbrains.kotlin.gradle.plugin.diagnostics.reportDiagnostic
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.AppleTarget
@@ -346,6 +350,46 @@ class SwiftExportUnitTests {
             buildSPMTaskName(iosX64Prefix),
             "Build SPM task name doesn't match expected prefix $iosX64Prefix"
         )
+    }
+
+    @Test
+    fun `test swift export package build tracks the deployment target`() {
+        val project = swiftExportProject()
+        project.evaluate()
+
+        val buildSPMTask = project.tasks.withType(BuildSPMSwiftExportPackage::class.java).single()
+        buildSPMTask.deploymentTargetSettingName.set("IPHONEOS_DEPLOYMENT_TARGET")
+        buildSPMTask.deploymentTarget.set("16.0")
+
+        val inputs = buildSPMTask.inputs.properties
+        assertEquals("IPHONEOS_DEPLOYMENT_TARGET", inputs["deploymentTargetSettingName"])
+        assertEquals("16.0", inputs["deploymentTarget"])
+    }
+
+    @Test
+    fun `test swift export SPM package builds use separate derived data as local state`() {
+        val project = swiftExportProject(archs = "arm64 x86_64", multiplatform = {
+            // fixme: KT-89587 Clean up tests after iosX64 target deprecation
+            listOf(iosSimulatorArm64(), iosX64())
+        })
+
+        project.evaluate()
+
+        val buildSPMTasks = listOf("iosSimulatorArm64", "iosX64").map { targetName ->
+            targetName to project.tasks.getByName("${targetName}DebugBuildSPMPackage") as BuildSPMSwiftExportPackage
+        }
+
+        buildSPMTasks.forEach { (targetName, task) ->
+            val derivedData = task.packageDerivedData.get().asFile
+            assertEquals(project.layout.buildDirectory.dir("SPMDerivedData/$targetName/Debug").get().asFile, derivedData)
+            assertFalse(
+                derivedData in task.outputs.files.files,
+                "DerivedData of ${task.name} must not be declared as a task output"
+            )
+        }
+
+        val derivedDataDirs = buildSPMTasks.map { (_, task) -> task.packageDerivedData.get().asFile }
+        assertEquals(derivedDataDirs.size, derivedDataDirs.distinct().size, "DerivedData directories must not be shared")
     }
 
     @Test
@@ -708,7 +752,9 @@ class SwiftExportUnitTests {
         }
         project.evaluate()
 
-        project.assertContainsDiagnostic(KotlinToolingDiagnostics.SwiftExportInvalidModuleName)
+        project.assertContainsDiagnostic(
+            KotlinToolingDiagnostics.SwiftExportInvalidModuleName("Shared.Module", project.path)
+        )
     }
 
     @Test
@@ -720,7 +766,9 @@ class SwiftExportUnitTests {
         }
         project.evaluate()
 
-        project.assertContainsDiagnostic(KotlinToolingDiagnostics.SwiftExportInvalidModuleName)
+        project.assertContainsDiagnostic(
+            KotlinToolingDiagnostics.SwiftExportInvalidModuleName("Custom.DateTime", "org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+        )
     }
 
     @Test
@@ -762,7 +810,9 @@ class SwiftExportUnitTests {
         val name = swiftExportTask.mainModuleInput.moduleName.get()
         assertEquals(invalidName.capitalizeFirstChar(), name)
 
-        project.assertContainsDiagnostic(KotlinToolingDiagnostics.SwiftExportInvalidModuleName)
+        project.assertContainsDiagnostic(
+            KotlinToolingDiagnostics.SwiftExportInvalidModuleName(name, project.path, "swiftExport { moduleName = ... }")
+        )
     }
 
     @Test
@@ -781,6 +831,59 @@ class SwiftExportUnitTests {
         val name = swiftExportTask.mainModuleInput.moduleName.get()
         assertEquals(validName, name)
 
+        project.assertNoDiagnostics(KotlinToolingDiagnostics.SwiftExportInvalidModuleName)
+    }
+
+    @Test
+    fun `test swift export project name with dots`() {
+        val project = swiftExportProject(
+            projectBuilder = {
+                withName("kotlinx.cli")
+            }
+        )
+        project.evaluate()
+
+        val swiftExportTask = project.tasks.withType(SwiftExportTask::class.java).single()
+        assertEquals("KotlinxCli", swiftExportTask.mainModuleInput.moduleName.get())
+
+        project.assertNoDiagnostics(KotlinToolingDiagnostics.SwiftExportInvalidModuleName)
+    }
+
+    @Test
+    fun `test exporting subproject with dots in name`() {
+        val project = buildProject(
+            projectBuilder = {
+                withName("shared")
+            },
+            configureProject = {
+                configureRepositoriesForTests()
+            }
+        )
+        val projectDependency = project.subProject("lib.core") {
+            iosSimulatorArm64()
+        }
+        project.setupForSwiftExport(
+            multiplatform = {
+                iosSimulatorArm64()
+                sourceSets.commonMain.dependencies {
+                    implementation(projectDependency)
+                }
+            },
+            swiftExport = {
+                export(projectDependency)
+            }
+        )
+
+        project.evaluate()
+        projectDependency.evaluate()
+
+        val swiftExportTask = project.tasks.withType(SwiftExportTask::class.java).single()
+        val actualModules = swiftExportTask.resolveSwiftExportedModules { project.reportDiagnostic(it) }
+
+        assertEquals(
+            setOf(SwiftExportModuleForAssertion("LibCore", "lib.core", true)),
+            actualModules.toModulesForAssertion(),
+        )
         project.assertNoDiagnostics(KotlinToolingDiagnostics.SwiftExportInvalidModuleName)
     }
 
@@ -827,22 +930,20 @@ class SwiftExportUnitTests {
     }
 
     @Test
-    fun `test exporting jvm dependency`() {
+    fun `test exporting jvm dependency fails`() {
         val project = swiftExportProject(
             projectBuilder = {
                 withName("shared")
             },
             swiftExport = {
+                // Resolves, but has no klib to export.
                 export("org.glassfish:jakarta.json:2.0.1")
             }
         )
 
         project.evaluate()
 
-        val swiftExportTask = project.tasks.withType(SwiftExportTask::class.java).single()
-        val actualModules = swiftExportTask.resolveSwiftExportedModules()
-
-        assertTrue(actualModules.isEmpty(), "No modules should be exported for JVM dependencies")
+        project.assertResolvingSwiftModulesFailsWith(KotlinToolingDiagnostics.SwiftExportModuleResolutionError)
     }
 
     @Test
@@ -859,13 +960,71 @@ class SwiftExportUnitTests {
 
         project.evaluate()
 
+        project.assertResolvingSwiftModulesFailsWith(KotlinToolingDiagnostics.SwiftExportModuleResolutionError)
+    }
+
+    @Test
+    fun `test exporting subproject with invalid default module name`() {
+        val project = buildProject(
+            projectBuilder = { withName("shared") },
+            configureProject = { configureRepositoriesForTests() }
+        )
+        // Starts with a digit, so the name derived from the project path is not a valid Swift identifier.
+        val projectDependency = project.subProject("1subproject")
+        project.setupForSwiftExport(
+            multiplatform = {
+                iosSimulatorArm64()
+                sourceSets.commonMain.dependencies {
+                    implementation(projectDependency)
+                }
+            },
+            swiftExport = {
+                export(projectDependency)
+            }
+        )
+
+        project.evaluate()
+        projectDependency.evaluate()
+
+        project.assertResolvingSwiftModulesFailsWith(
+            KotlinToolingDiagnostics.SwiftExportInvalidModuleName(
+                "1subproject",
+                ":1subproject",
+                "swiftExport { export(...) { moduleName = ... } }",
+                FATAL,
+            )
+        )
+    }
+
+    @Test
+    fun `test exporting subproject with invalid default module name but valid explicit module name`() {
+        val project = buildProject(
+            projectBuilder = { withName("shared") },
+            configureProject = { configureRepositoriesForTests() }
+        )
+        val projectDependency = project.subProject("1subproject")
+        project.setupForSwiftExport(
+            multiplatform = {
+                iosSimulatorArm64()
+                sourceSets.commonMain.dependencies {
+                    implementation(projectDependency)
+                }
+            },
+            swiftExport = {
+                export(projectDependency) {
+                    moduleName.set("Subproject")
+                }
+            }
+        )
+
+        project.evaluate()
+        projectDependency.evaluate()
+
         val swiftExportTask = project.tasks.withType(SwiftExportTask::class.java).single()
-        // Module resolution now happens at task execution. Route its diagnostics into the project collector so the
-        // resolution error stays observable here (the task's own reporter renders immediately without storing it).
         val actualModules = swiftExportTask.resolveSwiftExportedModules { project.reportDiagnostic(it) }
 
-        project.assertContainsDiagnostic(KotlinToolingDiagnostics.SwiftExportModuleResolutionError)
-        assertTrue(actualModules.isEmpty(), "No modules should be exported for invalid dependencies")
+        assertEquals(listOf("Subproject"), actualModules.map { it.moduleName })
+        project.assertNoDiagnostics(KotlinToolingDiagnostics.SwiftExportInvalidModuleName)
     }
 
     @Test
@@ -1446,6 +1605,25 @@ private fun ProjectInternal.subProject(
         }
     }
 )
+
+/**
+ * Module resolution diagnostics are reported while the Swift Export task runs, so they must be FATAL to fail the build.
+ * They are routed into the project collector here to stay observable after the throw.
+ */
+private fun ProjectInternal.assertResolvingSwiftModulesFailsWith(diagnostic: ToolingDiagnosticFactory) =
+    assertResolvingSwiftModulesFails { assertContainsDiagnostic(diagnostic) }
+
+private fun ProjectInternal.assertResolvingSwiftModulesFailsWith(diagnostic: ToolingDiagnostic) =
+    assertResolvingSwiftModulesFails { assertContainsDiagnostic(diagnostic) }
+
+private fun ProjectInternal.assertResolvingSwiftModulesFails(assertDiagnostic: ProjectInternal.() -> Unit) {
+    val swiftExportTask = tasks.withType(SwiftExportTask::class.java).single()
+    val thrown = assertFails { swiftExportTask.resolveSwiftExportedModules { reportDiagnostic(it) } }
+    if (thrown.allCauses.none { it is InvalidUserCodeException }) {
+        fail("Expected an InvalidUserCodeException in the cause chain, but got:\n${thrown.stackTraceToString()}")
+    }
+    assertDiagnostic()
+}
 
 private fun List<SwiftExportedModule>.toModulesForAssertion() = mapToSetOrEmpty { module ->
     SwiftExportModuleForAssertion(

@@ -42,6 +42,8 @@ private val FirDeclarationOrigin.isFakeDeclarationOrigin: Boolean
         is FirDeclarationOrigin.Synthetic.JavaProperty,
         is FirDeclarationOrigin.Synthetic.TypeAliasConstructor,
         is FirDeclarationOrigin.SamConstructor,
+        is FirDeclarationOrigin.ImportedFromObjectOrStatic,
+        is FirDeclarationOrigin.WrappedIntegerOperator,
             -> true
 
         is FirDeclarationOrigin.Source,
@@ -63,12 +65,11 @@ private val FirDeclarationOrigin.isFakeDeclarationOrigin: Boolean
         is FirDeclarationOrigin.Synthetic.DestructuringDeclarationContainer,
         is FirDeclarationOrigin.Synthetic.FakeHiddenInPreparationForNewJdk,
         is FirDeclarationOrigin.Synthetic.ImplicitWhenSubject,
+        is FirDeclarationOrigin.Synthetic.DanglingTypeParameter,
         is FirDeclarationOrigin.Synthetic.ReplContainerClass,
         is FirDeclarationOrigin.Synthetic.ReplEvalFunction,
         is FirDeclarationOrigin.DynamicScope,
-        is FirDeclarationOrigin.ImportedFromObjectOrStatic,
         is FirDeclarationOrigin.RenamedForOverride,
-        is FirDeclarationOrigin.WrappedIntegerOperator,
         is FirDeclarationOrigin.ScriptCustomization,
         is FirDeclarationOrigin.FromOtherReplSnippet,
         is FirDeclarationOrigin.ForeignValue,
